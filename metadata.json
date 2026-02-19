@@ -1,0 +1,8 @@
+{
+  "name": "SwimWaveApp",
+  "description": "A professional social network for the aquatic industry, connecting instructors, lifeguards, coaches, and facilities. A specialized platform to find jobs, share experiences, and network with peers in the world of swimming and aquatic sports.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

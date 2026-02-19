@@ -1,0 +1,521 @@
+/* src/styles/components/cards.css - CARD SYSTEM */
+
+/* ============ BASE CARD ============ */
+
+.card {
+  /* Structure */
+  background-color: white;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  
+  /* Visual */
+  box-shadow: var(--shadow-sm);
+  
+  /* Behavior */
+  transition: all var(--transition-base);
+  overflow: hidden;
+  
+  /* Layout */
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============ CARD VARIANTS ============ */
+
+/* Elevated Card */
+.card-elevated {
+  box-shadow: var(--shadow-md);
+  border: none;
+}
+
+.card-elevated:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* Interactive Card */
+.card-interactive {
+  cursor: pointer;
+  border-color: var(--color-neutral-200);
+}
+
+.card-interactive:hover {
+  border-color: var(--color-primary-300);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.card-interactive:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Outlined Card */
+.card-outlined {
+  box-shadow: none;
+  border-color: var(--color-neutral-300);
+}
+
+.card-outlined:hover {
+  border-color: var(--color-primary-400);
+}
+
+/* Flat Card */
+.card-flat {
+  box-shadow: none;
+  border: none;
+  background-color: var(--color-neutral-50);
+}
+
+/* ============ CARD SIZES ============ */
+
+/* Compact Card */
+.card-compact {
+  padding: var(--space-3);
+}
+
+/* Standard Card */
+.card-standard {
+  padding: var(--space-4);
+}
+
+/* Comfortable Card */
+.card-comfortable {
+  padding: var(--space-6);
+}
+
+/* Spacious Card */
+.card-spacious {
+  padding: var(--space-8);
+}
+
+/* ============ CARD SECTIONS ============ */
+
+/* Card Header */
+.card-header {
+  padding: var(--space-4) var(--space-4) var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-neutral-100);
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-3) calc(-1 * var(--space-4));
+}
+
+.card-header:last-child {
+  border-bottom: none;
+  margin-bottom: calc(-1 * var(--space-4));
+}
+
+/* Card Body */
+.card-body {
+  flex: 1;
+  padding: var(--space-4);
+}
+
+.card-body:first-child {
+  padding-top: var(--space-4);
+}
+
+.card-body:last-child {
+  padding-bottom: var(--space-4);
+}
+
+/* Card Footer */
+.card-footer {
+  padding: var(--space-3) var(--space-4) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--color-neutral-100);
+  margin: var(--space-3) calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
+  background-color: var(--color-neutral-50);
+}
+
+.card-footer:first-child {
+  border-top: none;
+  margin-top: calc(-1 * var(--space-4));
+  background-color: transparent;
+}
+
+/* ============ CARD CONTENT COMPONENTS ============ */
+
+/* Card Title */
+.card-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-neutral-900);
+  margin: 0 0 var(--space-2) 0;
+  line-height: var(--leading-snug);
+}
+
+.card-title-sm {
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+}
+
+.card-title-lg {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+}
+
+/* Card Subtitle */
+.card-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-600);
+  margin: 0 0 var(--space-3) 0;
+  line-height: var(--leading-normal);
+}
+
+/* Card Description */
+.card-description {
+  font-size: var(--text-base);
+  color: var(--color-neutral-700);
+  line-height: var(--leading-relaxed);
+  margin: 0 0 var(--space-4) 0;
+}
+
+.card-description:last-child {
+  margin-bottom: 0;
+}
+
+/* Card Meta */
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  margin: var(--space-2) 0;
+}
+
+.card-meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ============ SPECIALIZED CARDS ============ */
+
+/* Post Card */
+.card-post {
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+}
+
+.card-post-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  padding-bottom: var(--space-3);
+}
+
+.card-post-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  border: 2px solid var(--color-neutral-200);
+}
+
+.card-post-author {
+  flex: 1;
+}
+
+.card-post-author-name {
+  font-weight: var(--font-semibold);
+  color: var(--color-neutral-900);
+  margin: 0;
+  font-size: var(--text-base);
+}
+
+.card-post-author-meta {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  margin: 0;
+}
+
+.card-post-content {
+  padding: 0 var(--space-4) var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--color-neutral-800);
+}
+
+.card-post-media {
+  margin: 0 var(--space-4) var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.card-post-media img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.card-post-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--color-neutral-100);
+  margin-top: var(--space-3);
+}
+
+.card-post-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-600);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.card-post-action:hover {
+  background-color: var(--color-neutral-100);
+  color: var(--color-neutral-700);
+}
+
+.card-post-action.active {
+  color: var(--color-primary-600);
+  background-color: var(--color-primary-50);
+}
+
+/* Job Card */
+.card-job {
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+}
+
+.card-job-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-3);
+}
+
+.card-job-info h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-neutral-900);
+  margin: 0 0 var(--space-1) 0;
+}
+
+.card-job-company {
+  color: var(--color-neutral-600);
+  font-size: var(--text-base);
+  margin: 0;
+}
+
+.card-job-meta {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  margin: var(--space-3) 0;
+  flex-wrap: wrap;
+}
+
+.card-job-description {
+  font-size: var(--text-base);
+  color: var(--color-neutral-700);
+  line-height: var(--leading-relaxed);
+  margin: var(--space-3) 0;
+}
+
+.card-job-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+
+/* Profile Card */
+.card-profile {
+  border-radius: var(--radius-xl);
+  text-align: center;
+  padding: var(--space-6);
+}
+
+.card-profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  margin: 0 auto var(--space-4) auto;
+  border: 3px solid var(--color-primary-100);
+}
+
+.card-profile-name {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-neutral-900);
+  margin: 0 0 var(--space-1) 0;
+}
+
+.card-profile-title {
+  font-size: var(--text-base);
+  color: var(--color-neutral-600);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.card-profile-location {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  margin: 0 0 var(--space-4) 0;
+}
+
+.card-profile-stats {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-6);
+  margin: var(--space-4) 0;
+}
+
+.card-profile-stat {
+  text-align: center;
+}
+
+.card-profile-stat-number {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-neutral-900);
+  display: block;
+}
+
+.card-profile-stat-label {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ============ CARD STATES ============ */
+
+/* Loading Card */
+.card-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.8),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    left: 100%;
+  }
+}
+
+/* Error Card */
+.card-error {
+  border-color: var(--color-error-200);
+  background-color: var(--color-error-50);
+}
+
+.card-error .card-title {
+  color: var(--color-error-700);
+}
+
+/* Success Card */
+.card-success {
+  border-color: var(--color-success-200);
+  background-color: var(--color-success-50);
+}
+
+.card-success .card-title {
+  color: var(--color-success-700);
+}
+
+/* ============ RESPONSIVE ADJUSTMENTS ============ */
+
+@media (max-width: 767px) {
+  .card {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    margin-left: calc(-1 * var(--space-4));
+    margin-right: calc(-1 * var(--space-4));
+  }
+  
+  .card:first-child {
+    border-top: none;
+    margin-top: calc(-1 * var(--space-4));
+  }
+  
+  .card-post-header {
+    padding: var(--space-3);
+    padding-bottom: var(--space-2);
+  }
+  
+  .card-post-content {
+    padding: 0 var(--space-3) var(--space-2) var(--space-3);
+  }
+  
+  .card-post-media {
+    margin: 0 var(--space-3) var(--space-2) var(--space-3);
+  }
+  
+  .card-post-actions {
+    padding: var(--space-2) var(--space-3) var(--space-3) var(--space-3);
+  }
+  
+  .card-job {
+    padding: var(--space-3);
+  }
+  
+  .card-job-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+  
+  .card-job-meta {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  
+  .card-job-actions {
+    flex-direction: column;
+  }
+  
+  .card-job-actions .btn {
+    width: 100%;
+  }
+  
+  .card-profile {
+    padding: var(--space-4);
+  }
+  
+  .card-profile-stats {
+    gap: var(--space-4);
+  }
+}
+
+@media (min-width: 768px) {
+  .card {
+    border-radius: var(--radius-lg);
+    margin-left: 0;
+    margin-right: 0;
+    border: 1px solid var(--color-neutral-200);
+  }
+  
+  .card:first-child {
+    border-top: 1px solid var(--color-neutral-200);
+    margin-top: 0;
+  }
+}

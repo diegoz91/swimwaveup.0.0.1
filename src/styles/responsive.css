@@ -1,0 +1,262 @@
+/* src/styles/responsive.css - VERSIONE FINALE CORRETTA */
+
+/* ============ HEADER RESPONSIVE RULES ============ */
+
+/* Desktop: mostra header desktop, nascondi mobile nav */
+.hidden-mobile {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.visible-mobile {
+  display: none !important;
+}
+
+/* ============ MOBILE BREAKPOINTS ============ */
+
+/* Mobile & Small tablets (0-767px) */
+@media (max-width: 767px) {
+  /* Nascondi header desktop, mostra bottom nav mobile */
+  .hidden-mobile {
+    display: none !important;
+  }
+  
+  .visible-mobile {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+  
+  /* Layout principale mobile */
+  .main-content {
+    padding: 0.5rem;
+    padding-bottom: 80px; /* Spazio per bottom nav */
+  }
+  
+  .main-content.with-header {
+    padding-top: 0.5rem;
+  }
+
+  /* Register page mobile */
+  .register-container {
+    max-width: 100%;
+    margin: 1rem auto;
+    padding: 0 1rem;
+  }
+  
+  .user-type-cards {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .user-type-card {
+    padding: 1.5rem;
+  }
+  
+  .user-type-selection h2 {
+    font-size: 1.5rem;
+  }
+
+  /* Auth forms mobile */
+  .auth-form {
+    margin: 1rem auto;
+    padding: 1.5rem;
+    max-width: 100%;
+  }
+  
+  .auth-form input,
+  .auth-form select,
+  .auth-form button {
+    font-size: 16px; /* Prevent zoom on iOS */
+    padding: 12px;
+  }
+
+  /* Job cards mobile */
+  .job-card {
+    margin-bottom: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+  
+  .job-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .job-details {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .job-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .job-actions button {
+    width: 100%;
+    padding: 0.75rem;
+  }
+
+  /* Post creator mobile */
+  .post-creator {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    margin-bottom: 0.5rem;
+  }
+  
+  .post-creator-header img {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .post-creator textarea {
+    font-size: 16px;
+  }
+  
+  .post-creator-actions {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .media-buttons {
+    justify-content: space-around;
+  }
+  
+  .publish-button {
+    width: 100%;
+    padding: 0.75rem;
+  }
+
+  /* Modal responsive */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  
+  .modal-content {
+    width: 100%;
+    max-height: 95vh;
+    border-radius: 12px 12px 0 0;
+  }
+  
+  /* Touch targets */
+  button, .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  input, textarea, select {
+    min-height: 44px;
+  }
+  
+  /* Improve text readability */
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
+  /* Better focus styles */
+  button:focus,
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+}
+
+/* ============ DESKTOP BREAKPOINTS ============ */
+
+/* Medium devices and up (768px+) */
+@media (min-width: 768px) {
+  /* Mostra header desktop, nascondi bottom nav */
+  .hidden-mobile {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+  
+  .visible-mobile {
+    display: none !important;
+  }
+
+  .main-content {
+    padding: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+  
+  .main-content.with-header {
+    padding-top: 90px;
+  }
+  
+  .register-container {
+    max-width: 600px;
+  }
+  
+  .user-type-cards {
+    flex-direction: row;
+  }
+  
+  .job-card {
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+  }
+  
+  .job-actions {
+    flex-direction: row;
+  }
+  
+  .job-actions button {
+    width: auto;
+  }
+  
+  .post-creator {
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+  }
+  
+  .post-creator-actions {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .publish-button {
+    width: auto;
+  }
+}
+
+/* Large devices (992px+) */
+@media (min-width: 992px) {
+  .main-content {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+}
+
+/* Extra large devices (1200px+) */
+@media (min-width: 1200px) {
+  .main-content {
+    max-width: 900px;
+  }
+}
+
+/* ============ SAFE AREA SUPPORT ============ */
+
+@supports (padding: max(0px)) {
+  @media (max-width: 767px) {
+    .visible-mobile {
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+    
+    .main-content {
+      padding-bottom: max(80px, calc(80px + env(safe-area-inset-bottom)));
+    }
+  }
+}

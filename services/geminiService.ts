@@ -1,5 +1,4 @@
-
-
+/*
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import type { ProfessionalUser } from '../types';
 
@@ -115,3 +114,4 @@ export const generateImageAltText = async (imageFile: File): Promise<string> => 
         return "Non è stato possibile generare una descrizione.";
     }
 };
+*/

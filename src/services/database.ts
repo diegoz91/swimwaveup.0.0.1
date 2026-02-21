@@ -1,10 +1,17 @@
-// src/services/database.ts - CON TIPI CORRETTI
+// src/services/database.ts - ✅ STRICT TYPE CHECKING ENABLED
 import { databases, storage, account } from './appwrite';
 import { APPWRITE_CONFIG } from '../utils/constants';
-import { ID, Query } from 'appwrite';
-import { Certification, Experience, UserProfile, StructureProfile } from '@/types';
+import { ID, Query, Models } from 'appwrite';
+import { 
+  Certification, 
+  Experience, 
+  UserProfile, 
+  StructureProfile,
+  Post,
+  Job,
+  Application
+} from '@/types';
 
-// Keep original interface but add helper methods
 interface CompleteUserProfile extends UserProfile {
   experienceDetails?: string;
   certificationDetails?: string;
@@ -88,15 +95,11 @@ class DatabaseService {
     }
   }
 
-  async createStructureProfile(userId: string, profileData: any) {
+  // ✅ FIX: Sostituito any con Partial<StructureProfile>
+  async createStructureProfile(userId: string, profileData: Partial<StructureProfile>) {
     try {
       console.log('🔍 Creating structure profile for:', userId);
-      console.log('🔍 Profile data:', profileData);
-
       await this.debugSession();
-
-      console.log('🔍 Using collection ID:', this.collections.structures);
-      console.log('🔍 Using database ID:', this.dbId);
 
       const structure = await this.db.createDocument(
         this.dbId,
@@ -111,20 +114,15 @@ class DatabaseService {
       );
       console.log('✅ Structure profile created:', structure.$id);
       return structure;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ createStructureProfile error:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        code: error.code,
-        type: error.type
-      });
       throw error;
     }
   }
 
   async getUserProfile(userId: string): Promise<UserProfile> {
     try {
-      const profile = await this.db.getDocument(this.dbId, this.collections.users, userId) as any;
+      const profile = await this.db.getDocument(this.dbId, this.collections.users, userId) as unknown as CompleteUserProfile;
       return {
         ...profile,
         experienceList: deserializeExperience(profile.experienceDetails),
@@ -139,30 +137,27 @@ class DatabaseService {
   async getStructureProfile(userId: string): Promise<StructureProfile> {
     try {
       const structure = await this.db.getDocument(this.dbId, this.collections.structures, userId);
-      return structure as StructureProfile;
+      return structure as unknown as StructureProfile;
     } catch (error) {
       console.error('getStructureProfile error:', error);
       throw error;
     }
   }
 
-  async updateUserProfile(userId: string, updates: any) {
+  // ✅ FIX: Sostituito any con Partial<UserProfile> e rimosso bug logico (|| true)
+  async updateUserProfile(userId: string, updates: Partial<UserProfile>) {
     try {
-      const dbUpdates = { ...updates };
+      const dbUpdates: Record<string, unknown> = { ...updates };
 
       if (updates.experienceList) {
         dbUpdates.experienceDetails = serializeExperience(updates.experienceList);
-        if ('experience' in updates || true) {
-          dbUpdates.experience = updates.experienceList.length;
-        }
+        dbUpdates.experience = updates.experienceList.length;
         delete dbUpdates.experienceList;
       }
 
       if (updates.certificationsList) {
         dbUpdates.certificationDetails = serializeCertifications(updates.certificationsList);
-        if ('qualifications' in updates || true) {
-          dbUpdates.qualifications = updates.certificationsList.map((cert: Certification) => cert.name);
-        }
+        dbUpdates.qualifications = updates.certificationsList.map((cert: Certification) => cert.name);
         delete dbUpdates.certificationsList;
       }
 
@@ -180,15 +175,16 @@ class DatabaseService {
     }
   }
 
-  async initializeUserProfile(user: any) {
+  // ✅ FIX: Sostituito any con Models.User<Models.Preferences>
+  async initializeUserProfile(user: Models.User<Models.Preferences>) {
     try {
-      const profileData = {
+      const profileData: Partial<UserProfile> = {
         firstName: user.name?.split(' ')[0] || 'User',
         lastName: user.name?.split(' ')[1] || '',
         email: user.email,
         city: '',
         province: '',
-        bio: 'Welcome to my profile!'
+        bio: 'Benvenuto nel mio profilo SwimWaveUp!'
       };
 
       return await this.createUserProfile(user.$id, profileData);
@@ -210,11 +206,14 @@ class DatabaseService {
         ]
       );
 
-      return users.documents.map(user => ({
-        ...user,
-        experienceList: deserializeExperience(user.experienceDetails),
-        certificationsList: deserializeCertifications(user.certificationDetails)
-      }));
+      return users.documents.map(user => {
+        const doc = user as unknown as CompleteUserProfile;
+        return {
+          ...doc,
+          experienceList: deserializeExperience(doc.experienceDetails),
+          certificationsList: deserializeCertifications(doc.certificationDetails)
+        };
+      });
     } catch (error) {
       console.error('getAllUsers error:', error);
       throw error;
@@ -239,7 +238,8 @@ class DatabaseService {
   }
 
   // ==================== POSTS ====================
-  async createPost(postData: object) {
+  // ✅ FIX: Sostituito object con Partial<Post>
+  async createPost(postData: Partial<Post>) {
     try {
       const post = await this.db.createDocument(
         this.dbId,
@@ -346,7 +346,7 @@ class DatabaseService {
       const likerProfiles = [];
       for (const like of likes.documents) {
         try {
-          let profile;
+          let profile: any;
           try {
             profile = await this.getUserProfile(like.userId);
             profile.userType = 'professional';
@@ -492,7 +492,8 @@ class DatabaseService {
   }
 
   // ==================== JOBS ====================
-  async createJob(jobData: object) {
+  // ✅ FIX: Sostituito object con Partial<Job>
+  async createJob(jobData: Partial<Job>) {
     try {
       const job = await this.db.createDocument(
         this.dbId,
@@ -535,7 +536,8 @@ class DatabaseService {
   }
 
   // ==================== APPLICATIONS ====================
-  async createApplication(applicationData: { jobId: string, [key: string]: any }) {
+  // ✅ FIX: Rimozione any tramite l'interfaccia corretta
+  async createApplication(applicationData: Partial<Application> & { jobId: string }) {
     try {
       const application = await this.db.createDocument(
         this.dbId,
@@ -925,10 +927,8 @@ class DatabaseService {
     try {
       console.log('📤 Uploading profile image for user:', userId);
 
-      // Prima elimina l'eventuale vecchia immagine
       await this.deleteOldProfileImage(userId);
 
-      // Carica la nuova immagine
       const uploadedFile = await this.storage.createFile(
         APPWRITE_CONFIG.buckets.avatars,
         ID.unique(),
@@ -937,10 +937,8 @@ class DatabaseService {
 
       console.log('✅ Image uploaded:', uploadedFile.$id);
 
-      // Ottieni l'URL pubblico
       const imageUrl = this.getProfileImageUrl(uploadedFile.$id);
 
-      // Aggiorna il profilo utente con il nuovo avatar
       await this.updateUserProfile(userId, {
         avatar: imageUrl,
         avatarFileId: uploadedFile.$id
@@ -958,10 +956,8 @@ class DatabaseService {
     try {
       console.log('📤 Uploading structure logo for:', userId);
 
-      // Prima elimina l'eventuale vecchio logo
       await this.deleteOldStructureImage(userId);
 
-      // Carica la nuova immagine
       const uploadedFile = await this.storage.createFile(
         APPWRITE_CONFIG.buckets.logos,
         ID.unique(),
@@ -970,10 +966,8 @@ class DatabaseService {
 
       console.log('✅ Logo uploaded:', uploadedFile.$id);
 
-      // Ottieni l'URL pubblico
       const imageUrl = this.getStructureImageUrl(uploadedFile.$id);
 
-      // Aggiorna il profilo struttura con il nuovo logo
       await this.db.updateDocument(
         this.dbId,
         this.collections.structures,
@@ -1011,7 +1005,6 @@ class DatabaseService {
         console.log('🗑️ Old avatar deleted');
       }
     } catch (error) {
-      // Se non c'è un'immagine precedente, ignora l'errore
       console.log('No previous avatar to delete');
     }
   }
@@ -1052,7 +1045,6 @@ class DatabaseService {
         queries
       );
 
-      // Carica i profili delle strutture per ogni lavoro
       const jobsWithStructures = [];
       for (const job of jobs.documents) {
         try {
@@ -1113,9 +1105,6 @@ class DatabaseService {
       throw error;
     }
   }
-
-
-
 }
 
 export const databaseService = new DatabaseService();

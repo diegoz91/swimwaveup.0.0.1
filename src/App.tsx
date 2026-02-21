@@ -9,8 +9,8 @@ import AppwriteDebugger from './components/common/DebugPanel';
 import { databaseService } from './services/database';
 
 // Old Components
-import { Header } from '../components/Header';
-import { BottomNavBar } from '../components/BottomNavBar';
+import Header from './components/layout/Header';
+import BottomNav from './components/layout/BottomNav';
 import { ProfileView } from '../components/ProfileView';
 import { FacilityView } from '../components/FacilityView';
 import { LavoroView } from '../components/LavoroView';
@@ -174,7 +174,7 @@ const AppLayout = () => {
             </main>
             
             {showNavigation && (
-                <BottomNavBar
+                <BottomNav
                     onNavigate={handleNavigate}
                     unreadMessages={unreadMessagesCount}
                 />

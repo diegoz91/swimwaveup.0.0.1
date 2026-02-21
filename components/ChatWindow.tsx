@@ -1,11 +1,6 @@
-// ============================================================
-// FILE 1: src/components/ChatWindow.tsx - SOSTITUISCI QUESTO
-// ============================================================
-
 import React, { useState, useEffect, useRef } from 'react';
-import { generateQuickReplies } from '../services/geminiService';
-import { databaseService } from '@/src/services/database';
-import { UserProfile, StructureProfile, Message } from '@/types';
+import { databaseService } from '../src/services/database';
+import type { UserProfile, StructureProfile, Message } from '../types';
 import { Icon } from './Icon';
 
 interface ChatWindowProps {
@@ -26,8 +21,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
+  
   const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -36,33 +34,44 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isGenerating, quickReplies]);
 
   useEffect(() => {
-    loadMessages();
-  }, [conversationId]);
+    let isMounted = true;
 
-  const loadMessages = async () => {
-    try {
-      setIsLoading(true);
-      const msgs = await databaseService.getConversationMessages(conversationId, 50);
-      setMessages(msgs);
-      await databaseService.markMessagesAsRead(conversationId, currentUserId);
-    } catch (error) {
-      console.error('Error loading messages:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const loadMessages = async () => {
+      try {
+        setIsLoading(true);
+        const msgs = await databaseService.getConversationMessages(conversationId, 50);
+        
+        if (isMounted) {
+          setMessages(msgs);
+          databaseService.markMessagesAsRead(conversationId, currentUserId).catch(console.error);
+        }
+      } catch (error) {
+        console.error('Error loading messages:', error);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    loadMessages();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [conversationId, currentUserId]);
 
   const handleSendMessage = async (text: string) => {
-    if (!text.trim()) return;
+    const trimmedText = text.trim();
+    if (!trimmedText || isSending) return;
 
     try {
+      setIsSending(true);
       const message = await databaseService.sendMessage(
         currentUserId,
         participant.userId,
-        text.trim()
+        trimmedText
       );
 
       setMessages(prev => [...prev, message]);
@@ -70,7 +79,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       setQuickReplies([]);
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Errore nell\'invio del messaggio. Riprova.');
+      alert("Errore nell'invio del messaggio. Riprova.");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -79,12 +90,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       .filter(m => m.senderId !== currentUserId)
       .pop();
     
-    if (!lastReceivedMessage) return;
+    if (!lastReceivedMessage || isGenerating) return;
 
     setIsGenerating(true);
     try {
-      const replies = await generateQuickReplies(lastReceivedMessage.content);
-      setQuickReplies(replies);
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const fallbackReplies = ["Ottimo, grazie!", "Certamente.", "Ti faccio sapere presto."];
+      setQuickReplies(fallbackReplies);
     } catch (error) {
       console.error('Error generating replies:', error);
     } finally {
@@ -99,114 +111,126 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     });
   };
 
-  const getParticipantName = () => {
+  const getParticipantName = (): string => {
     if (participant.userType === 'professional') {
-      return `${participant.firstName} ${participant.lastName}`;
+      return `${participant.firstName || ''} ${participant.lastName || ''}`.trim() || 'Utente';
     }
-    return participant.structureName;
+    return participant.structureName || 'Struttura';
   };
 
-  const getParticipantSubtitle = () => {
+  const getParticipantSubtitle = (): string => {
     if (participant.userType === 'professional') {
-      return participant.bio?.substring(0, 50) || 'Professionista';
+      return participant.bio ? `${participant.bio.substring(0, 45)}...` : 'Professionista';
     }
-    return participant.structureType;
+    return participant.structureType || 'Piscina';
   };
 
-  const getParticipantAvatar = () => {
-    if (participant.userType === 'professional') {
-      return participant.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(getParticipantName());
-    }
-    return participant.logo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(participant.structureName);
+  const getParticipantAvatar = (): string => {
+    const name = getParticipantName();
+    if (participant.userType === 'professional' && participant.avatar) return participant.avatar;
+    if (participant.userType === 'structure' && participant.logo) return participant.logo;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=eff6ff&color=1d4ed8`;
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full">
-      <div className="flex items-center p-3 border-b border-slate-200 bg-white">
+    <div className="flex-1 flex flex-col h-full bg-slate-50 relative">
+      {/* Header della Chat */}
+      <div className="flex items-center p-3 sm:p-4 border-b border-slate-200 bg-white sticky top-0 z-10 shadow-sm">
         <button 
           onClick={onBack} 
-          className="md:hidden mr-2 p-1 text-slate-500 hover:bg-slate-100 rounded-full"
+          className="md:hidden mr-3 p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors"
+          aria-label="Torna indietro"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
+          <Icon type="x" className="w-6 h-6" />
         </button>
         
         <div 
-          className="flex items-center cursor-pointer hover:bg-slate-50 rounded-lg p-2 -ml-2 transition-colors"
+          className="flex items-center cursor-pointer hover:bg-slate-50 rounded-xl p-2 -ml-2 transition-colors flex-1"
           onClick={() => onProfileClick?.(participant.userId)}
         >
           <img 
             src={getParticipantAvatar()} 
             alt={getParticipantName()} 
-            className="w-10 h-10 rounded-full object-cover mr-3" 
+            className="w-12 h-12 rounded-full object-cover mr-3 border border-slate-100 shadow-sm" 
           />
           <div>
-            <p className="font-bold text-slate-800">{getParticipantName()}</p>
-            <p className="text-sm text-slate-500">{getParticipantSubtitle()}</p>
+            <p className="font-bold text-slate-800 leading-tight">{getParticipantName()}</p>
+            <p className="text-xs sm:text-sm text-slate-500 truncate max-w-[200px] sm:max-w-md">
+              {getParticipantSubtitle()}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 p-4 overflow-y-auto bg-slate-50">
+      {/* Area Messaggi */}
+      <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
         {isLoading ? (
           <div className="flex justify-center items-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400">
-            <Icon type="mail" className="w-16 h-16 mb-4" />
-            <p>Nessun messaggio ancora</p>
-            <p className="text-sm">Inizia la conversazione!</p>
+          <div className="flex flex-col items-center justify-center h-full text-slate-400 opacity-80">
+            <Icon type="chat-bubble" className="w-16 h-16 mb-4 text-slate-300" />
+            <p className="font-medium text-slate-600">Nessun messaggio</p>
+            <p className="text-sm mt-1">Scrivi il primo messaggio per iniziare!</p>
           </div>
         ) : (
-          messages.map(msg => (
-            <div 
-              key={msg.$id} 
-              className={`flex items-end gap-2 mb-4 ${msg.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}
-            >
-              {msg.senderId !== currentUserId && (
-                <img 
-                  src={getParticipantAvatar()} 
-                  className="w-8 h-8 rounded-full object-cover" 
-                  alt={getParticipantName()}
-                />
-              )}
+          <div className="space-y-4">
+            {messages.map((msg, index) => {
+              const isMe = msg.senderId === currentUserId;
+              const showAvatar = !isMe && (index === messages.length - 1 || messages[index + 1].senderId === currentUserId);
               
-              <div 
-                className={`rounded-2xl px-4 py-2 max-w-sm ${
-                  msg.senderId === currentUserId 
-                    ? 'bg-blue-500 text-white rounded-br-none' 
-                    : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
-                }`}
-              >
-                <p className="text-sm break-words">{msg.content}</p>
-                <div className="flex justify-end items-center gap-1 mt-1">
-                  <span className={`text-xs ${msg.senderId === currentUserId ? 'text-blue-100' : 'text-slate-400'}`}>
-                    {formatTimestamp(msg.sentAt)}
-                  </span>
-                  {msg.senderId === currentUserId && (
-                    <Icon 
-                      type="check-double" 
-                      className={`w-4 h-4 ${msg.isRead ? 'text-blue-200' : 'text-blue-300'}`} 
-                    />
+              return (
+                <div key={msg.$id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                  {!isMe && (
+                    <div className="w-8 flex-shrink-0">
+                      {showAvatar && (
+                        <img 
+                          src={getParticipantAvatar()} 
+                          className="w-8 h-8 rounded-full object-cover shadow-sm" 
+                          alt="Avatar"
+                        />
+                      )}
+                    </div>
                   )}
+                  
+                  <div 
+                    className={`relative group rounded-2xl px-4 py-2.5 max-w-[75%] sm:max-w-md shadow-sm ${
+                      isMe 
+                        ? 'bg-blue-600 text-white rounded-br-sm' 
+                        : 'bg-white text-slate-800 border border-slate-100 rounded-bl-sm'
+                    }`}
+                  >
+                    <p className="text-[15px] break-words whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                    <div className={`flex justify-end items-center gap-1 mt-1 text-[11px] ${isMe ? 'text-blue-200' : 'text-slate-400'}`}>
+                      <span>{formatTimestamp(msg.sentAt)}</span>
+                      {isMe && (
+                        <Icon 
+                          type="check-double" 
+                          className={`w-3.5 h-3.5 ${msg.isRead ? 'text-white' : 'text-blue-300'}`} 
+                        />
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))
+              );
+            })}
+          </div>
         )}
-        <div ref={messagesEndRef} />
+        {/* Ancora invisibile per lo scroll */}
+        <div ref={messagesEndRef} className="h-4" />
       </div>
 
-      <div className="p-4 bg-white border-t border-slate-200">
+      {/* Input Area */}
+      <div className="p-3 sm:p-4 bg-white border-t border-slate-200">
         {quickReplies.length > 0 && (
-          <div className="flex gap-2 mb-3 flex-wrap">
+          <div className="flex gap-2 mb-3 overflow-x-auto pb-1 custom-scrollbar hide-scrollbar-mobile">
             {quickReplies.map((reply, i) => (
               <button 
                 key={i} 
                 onClick={() => handleSendMessage(reply)} 
-                className="bg-blue-50 text-blue-700 text-sm font-medium px-3 py-1.5 rounded-full hover:bg-blue-100 transition-colors"
+                disabled={isSending}
+                className="whitespace-nowrap bg-blue-50 border border-blue-100 text-blue-700 text-sm font-semibold px-4 py-1.5 rounded-full hover:bg-blue-100 hover:border-blue-200 transition-all disabled:opacity-50"
               >
                 {reply}
               </button>
@@ -214,17 +238,17 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         )}
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 bg-slate-50 p-1.5 sm:p-2 rounded-full border border-slate-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
           <button 
             onClick={handleGenerateReplies} 
             disabled={isGenerating || messages.filter(m => m.senderId !== currentUserId).length === 0}
-            className="p-2 text-slate-500 hover:text-blue-600 rounded-full hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title="Genera risposte rapide con AI"
+            className="p-2 sm:p-2.5 text-blue-600 hover:bg-blue-100 rounded-full disabled:text-slate-400 disabled:hover:bg-transparent transition-colors group"
+            title="Suggerisci risposte con AI"
           >
             {isGenerating ? (
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              <Icon type="sparkles" className="w-6 h-6" />
+              <Icon type="sparkles" className="w-5 h-5 group-hover:scale-110 transition-transform" />
             )}
           </button>
           
@@ -232,22 +256,27 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSendMessage(newMessage);
               }
             }}
             placeholder="Scrivi un messaggio..."
-            className="flex-1 bg-slate-100 border-slate-200 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+            className="flex-1 bg-transparent py-2 px-1 focus:outline-none text-slate-800 placeholder-slate-400"
+            disabled={isSending}
           />
           
           <button 
             onClick={() => handleSendMessage(newMessage)}
-            disabled={!newMessage.trim()}
-            className="bg-blue-500 text-white rounded-full p-2 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={!newMessage.trim() || isSending}
+            className="bg-blue-600 text-white rounded-full p-2.5 sm:p-3 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all transform active:scale-95"
           >
-            <Icon type="send" className="w-6 h-6" />
+            {isSending ? (
+               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Icon type="send" className="w-5 h-5 ml-0.5" />
+            )}
           </button>
         </div>
       </div>

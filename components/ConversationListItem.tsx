@@ -1,9 +1,5 @@
-// ============================================================
-// FILE 2: src/components/ConversationListItem.tsx - SOSTITUISCI QUESTO
-// ============================================================
-
-import { UserProfile, StructureProfile } from '@/types';
-import React from 'react';
+import React, { memo } from 'react';
+import type { UserProfile, StructureProfile } from '../types';
 
 interface ConversationItemProps {
   conversation: {
@@ -21,7 +17,7 @@ interface ConversationItemProps {
   onSelect: () => void;
 }
 
-export const ConversationListItem: React.FC<ConversationItemProps> = ({ 
+export const ConversationListItem: React.FC<ConversationItemProps> = memo(({ 
   conversation, 
   currentUserId,
   isSelected, 
@@ -29,21 +25,23 @@ export const ConversationListItem: React.FC<ConversationItemProps> = ({
 }) => {
   const { participant, lastMessage, unreadCount } = conversation;
 
-  const getParticipantName = () => {
+  const getParticipantName = (): string => {
     if (participant.userType === 'professional') {
-      return `${participant.firstName} ${participant.lastName}`;
+      return `${participant.firstName || ''} ${participant.lastName || ''}`.trim() || 'Utente';
     }
-    return participant.structureName;
+    return participant.structureName || 'Struttura';
   };
 
-  const getParticipantAvatar = () => {
-    if (participant.userType === 'professional') {
-      return participant.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(getParticipantName())}`;
-    }
-    return participant.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(participant.structureName)}`;
+  const name = getParticipantName();
+
+  const getParticipantAvatar = (): string => {
+    if (participant.userType === 'professional' && participant.avatar) return participant.avatar;
+    if (participant.userType === 'structure' && participant.logo) return participant.logo;
+    
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=eff6ff&color=1d4ed8`;
   };
 
-  const formatTimestamp = (isoString: string) => {
+  const formatTimestamp = (isoString: string): string => {
     const date = new Date(isoString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -59,48 +57,65 @@ export const ConversationListItem: React.FC<ConversationItemProps> = ({
     return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
   };
 
-  const getMessagePreview = () => {
-    const preview = lastMessage.content;
+  const getMessagePreview = (): string => {
     const isSentByMe = lastMessage.senderId === currentUserId;
     const prefix = isSentByMe ? 'Tu: ' : '';
-    
-    return prefix + (preview.length > 50 ? preview.substring(0, 50) + '...' : preview);
+    return prefix + lastMessage.content;
   };
 
   return (
     <div 
-      className={`flex items-center p-3 cursor-pointer hover:bg-slate-50 transition-colors ${
-        isSelected ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+      className={`flex items-center p-3 sm:p-4 cursor-pointer transition-colors border-l-4 ${
+        isSelected 
+          ? 'bg-blue-50 border-blue-600' 
+          : 'bg-white border-transparent hover:bg-slate-50'
       }`}
       onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      aria-selected={isSelected}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
     >
-      <div className="relative">
+      {/* Area Avatar */}
+      <div className="relative flex-shrink-0">
         <img 
           src={getParticipantAvatar()} 
-          alt={getParticipantName()} 
-          className="w-12 h-12 rounded-full object-cover mr-3" 
+          alt={name} 
+          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover mr-3 sm:mr-4 border border-slate-100 shadow-sm" 
+          loading="lazy"
         />
+        {/* Pallino Stato Online */}
         {participant.userType === 'professional' && participant.isActive && (
-          <div className="absolute bottom-0 right-3 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+          <div 
+            className="absolute bottom-0 right-3 sm:right-4 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow-sm"
+            title="Utente attivo"
+            aria-hidden="true"
+          />
         )}
       </div>
       
-      <div className="flex-grow overflow-hidden">
-        <div className="flex justify-between items-center mb-1">
-          <p className={`font-semibold truncate ${unreadCount > 0 ? 'text-slate-900' : 'text-slate-700'}`}>
-            {getParticipantName()}
+      {/* Area Testi */}
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-baseline mb-0.5">
+          <p className={`font-bold text-sm sm:text-base truncate pr-2 ${unreadCount > 0 ? 'text-slate-900' : 'text-slate-700'}`}>
+            {name}
           </p>
-          <p className="text-xs text-slate-400 flex-shrink-0 ml-2">
+          <p className={`text-[10px] sm:text-xs whitespace-nowrap flex-shrink-0 ${unreadCount > 0 ? 'text-blue-600 font-bold' : 'text-slate-400'}`}>
             {formatTimestamp(lastMessage.sentAt)}
           </p>
         </div>
         
         <div className="flex justify-between items-center">
-          <p className={`text-sm truncate ${unreadCount > 0 ? 'text-slate-900 font-medium' : 'text-slate-500'}`}>
+          <p className={`text-xs sm:text-sm truncate pr-2 ${unreadCount > 0 ? 'text-slate-900 font-semibold' : 'text-slate-500'}`}>
             {getMessagePreview()}
           </p>
           {unreadCount > 0 && (
-            <span className="bg-blue-500 text-white text-xs font-bold rounded-full h-5 min-w-[20px] flex items-center justify-center px-1.5 flex-shrink-0 ml-2">
+            <span className="bg-blue-600 text-white text-[10px] sm:text-xs font-bold rounded-full h-5 min-w-[20px] flex items-center justify-center px-1.5 flex-shrink-0 shadow-sm">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
@@ -108,4 +123,6 @@ export const ConversationListItem: React.FC<ConversationItemProps> = ({
       </div>
     </div>
   );
-};
+});
+
+ConversationListItem.displayName = 'ConversationListItem';

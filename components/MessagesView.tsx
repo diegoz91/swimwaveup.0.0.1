@@ -1,12 +1,8 @@
-// ============================================================
-// FILE 3: src/components/MessagesView.tsx - VERIFICA IMPORT PATH
-// ============================================================
-
 import React, { useState, useEffect } from 'react';
 import { ChatWindow } from './ChatWindow';
 import { ConversationListItem } from './ConversationListItem';
-import { databaseService } from '@/src/services/database';
-import { UserProfile, StructureProfile } from '@/types';
+import { databaseService } from '../src/services/database'; 
+import type { UserProfile, StructureProfile } from '../types';
 import { Icon } from './Icon';
 
 interface Conversation {
@@ -43,7 +39,6 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
   useEffect(() => {
     if (startChatWithUserId && startChatWithUserId !== currentUserId) {
-      console.log('🔍 Starting new chat with userId:', startChatWithUserId);
       startNewChat(startChatWithUserId);
     }
   }, [startChatWithUserId]);
@@ -64,32 +59,25 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
   const startNewChat = async (userId: string) => {
     try {
-      console.log('🔍 Creating conversation ID...');
       const conversationId = [currentUserId, userId].sort().join('_');
-      console.log('🔍 Conversation ID:', conversationId);
       
       const existingConv = conversations.find(c => c.conversationId === conversationId);
       
       if (existingConv) {
-        console.log('✅ Conversation exists, opening...');
         setSelectedConversationId(conversationId);
       } else {
-        console.log('🔍 Loading participant profile...');
         let participant: UserProfile | StructureProfile;
         try {
           participant = await databaseService.getUserProfile(userId);
-          console.log('✅ User profile loaded:', participant);
         } catch {
           participant = await databaseService.getStructureProfile(userId);
-          console.log('✅ Structure profile loaded:', participant);
         }
         
         setNewChatParticipant(participant);
         setSelectedConversationId(conversationId);
-        console.log('✅ New chat opened!');
       }
     } catch (error) {
-      console.error('❌ Error starting new chat:', error);
+      console.error('Error starting new chat:', error);
       alert('Impossibile avviare la conversazione. Riprova.');
     }
   };
@@ -108,43 +96,45 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   const chatParticipant = selectedConversation?.participant || newChatParticipant;
 
   return (
-    <div className="flex h-[calc(100vh-128px)] md:h-[calc(100vh-128px)] bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden">
-      <div className={`w-full md:w-1/3 border-r border-slate-200 flex-col ${showList ? 'flex' : 'hidden md:flex'}`}>
-        <div className="p-4 border-b border-slate-200 bg-white">
-          <h2 className="text-xl font-bold text-slate-800">Messaggi</h2>
+    <div className="flex h-[calc(100vh-140px)] md:h-[calc(100vh-100px)] max-w-6xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden mb-8 md:mb-0">
+      
+      {/* Sidebar Lista Conversazioni */}
+      <div className={`w-full md:w-[380px] flex-col bg-slate-50 border-r border-slate-200 ${showList ? 'flex' : 'hidden md:flex'}`}>
+        <div className="p-5 border-b border-slate-200 bg-white">
+          <h2 className="text-2xl font-extrabold text-slate-800">Messaggi</h2>
         </div>
         
-        <div className="flex-grow overflow-y-auto">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           {isLoading ? (
-            <div className="flex justify-center items-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <div className="flex justify-center items-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 border-t-blue-600"></div>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-              <div className="text-red-500 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className="bg-red-50 text-red-500 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                <Icon type="info" className="w-8 h-8" />
               </div>
-              <p className="text-slate-600 font-medium mb-2">Errore di caricamento</p>
-              <p className="text-sm text-slate-500 mb-4">{error}</p>
+              <p className="text-slate-800 font-bold mb-1">Errore di caricamento</p>
+              <p className="text-sm text-slate-500 mb-6">{error}</p>
               <button 
                 onClick={loadConversations}
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                className="bg-blue-600 text-white px-6 py-2.5 rounded-full font-bold hover:bg-blue-700 transition-colors shadow-sm"
               >
                 Riprova
               </button>
             </div>
           ) : conversations.length === 0 && !newChatParticipant ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center text-slate-400">
-              <Icon type="mail" className="w-16 h-16 mb-4" />
-              <p className="font-medium">Nessuna conversazione</p>
-              <p className="text-sm mt-2">
-                Inizia a chattare con altri professionisti dal loro profilo
+              <div className="bg-white p-6 rounded-full shadow-sm border border-slate-100 mb-4">
+                <Icon type="chat-bubble" className="w-12 h-12 text-slate-300" />
+              </div>
+              <p className="font-bold text-slate-600 text-lg">La tua casella è vuota</p>
+              <p className="text-sm mt-2 leading-relaxed">
+                Le tue conversazioni appariranno qui. Visita il profilo di un collega o di una struttura per inviare il primo messaggio!
               </p>
             </div>
           ) : (
-            <>
+            <div className="divide-y divide-slate-100">
               {conversations.map(conv => (
                 <ConversationListItem
                   key={conv.conversationId}
@@ -154,12 +144,13 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                   onSelect={() => setSelectedConversationId(conv.conversationId)}
                 />
               ))}
-            </>
+            </div>
           )}
         </div>
       </div>
 
-      <div className={`w-full md:w-2/3 flex-col ${!showList ? 'flex' : 'hidden md:flex'}`}>
+      {/* Area Chat Principale */}
+      <div className={`flex-1 flex-col bg-white ${!showList ? 'flex' : 'hidden md:flex'}`}>
         {chatParticipant && selectedConversationId ? (
           <ChatWindow
             key={selectedConversationId}
@@ -170,15 +161,16 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
             onProfileClick={onProfileClick}
           />
         ) : (
-          <div className="hidden md:flex flex-col items-center justify-center h-full text-slate-500 p-8">
-            <Icon type="mail" className="w-24 h-24 text-slate-300 mb-4" />
-            <h3 className="text-xl font-semibold">Seleziona una conversazione</h3>
-            <p className="mt-2 text-center">
-              Scegli una chat dalla lista per visualizzare i messaggi
+          <div className="hidden md:flex flex-col items-center justify-center h-full text-slate-400 bg-slate-50">
+            <Icon type="mail" className="w-24 h-24 text-slate-200 mb-6" />
+            <h3 className="text-2xl font-bold text-slate-600">I tuoi messaggi</h3>
+            <p className="mt-2 font-medium">
+              Seleziona una conversazione dalla lista per iniziare a chattare
             </p>
           </div>
         )}
       </div>
+
     </div>
   );
 };

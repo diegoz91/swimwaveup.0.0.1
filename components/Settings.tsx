@@ -4,7 +4,7 @@ import type { AuthenticatedUser, View } from '../types';
 
 interface SettingsProps {
   currentUser: AuthenticatedUser;
-  onNavigate: (view: View) => void;
+  onNavigate: (view: View, id?: string) => void;
   onLogout?: () => void;
 }
 
@@ -17,113 +17,113 @@ export const Settings: React.FC<SettingsProps> = ({
   
   const isProfessional = currentUser.userType === 'professional';
 
-  // Sezioni del menu laterale
   const menuItems = [
     { id: 'account', label: 'Account', icon: 'user' },
-    { id: 'privacy', label: 'Privacy', icon: 'shield' },
+    { id: 'privacy', label: 'Privacy e Sicurezza', icon: 'building' },
     { id: 'notifications', label: 'Notifiche', icon: 'bell' },
     { id: 'about', label: 'Info App', icon: 'info' }
   ] as const;
 
+  const displayName = isProfessional 
+    ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Utente'
+    : currentUser.structureName || 'Struttura';
+    
+  const displayAvatar = (isProfessional ? currentUser.avatar : currentUser.logo) || 
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=eff6ff&color=1d4ed8`;
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={() => onNavigate('dashboard')}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
-                <Icon type="arrow-left" className="w-5 h-5" />
-              </button>
-              <h1 className="text-2xl font-bold text-gray-900">Impostazioni</h1>
-            </div>
+    <div className="min-h-[calc(100vh-64px)] bg-slate-50 pb-20 md:pb-8">
+      {/* Header Mobile/Desktop */}
+      <div className="bg-white border-b border-slate-200 sticky top-16 z-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center space-x-3">
+            <button 
+              onClick={() => onNavigate('dashboard')}
+              className="p-2 -ml-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Torna alla Dashboard"
+            >
+              <Icon type="x" className="w-5 h-5" />
+            </button>
+            <h1 className="text-2xl font-extrabold text-slate-800">Impostazioni</h1>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
           
-          {/* Menu laterale */}
+          {/* Menu Laterale */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm border">
-              <nav className="p-2">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden sticky top-36">
+              <nav className="p-2 sm:p-3 flex flex-row lg:flex-col overflow-x-auto custom-scrollbar hide-scrollbar-mobile">
                 {menuItems.map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                    className={`flex-shrink-0 lg:flex-shrink w-auto lg:w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all font-semibold ${
                       activeTab === item.id
-                        ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600'
-                        : 'text-gray-700 hover:bg-gray-50'
+                        ? 'bg-blue-50 text-blue-700 shadow-sm'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
                     }`}
                   >
-                    <Icon type={item.icon as any} className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
+                    <Icon type={item.icon as any} className={`w-5 h-5 ${activeTab === item.id ? 'fill-current opacity-20' : ''}`} />
+                    <span className="whitespace-nowrap">{item.label}</span>
                   </button>
                 ))}
               </nav>
             </div>
           </div>
 
-          {/* Contenuto principale */}
+          {/* Contenuto Principale */}
           <div className="lg:col-span-3">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 min-h-[400px]">
               
               {/* Tab Account */}
               {activeTab === 'account' && (
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6">Informazioni Account</h2>
+                <div className="animate-fade-in">
+                  <h2 className="text-xl font-extrabold text-slate-800 mb-6">Informazioni Account</h2>
                   
-                  {/* Info utente */}
-                  <div className="mb-8">
-                    <div className="flex items-center space-x-4 mb-4">
+                  {/* Info Utente */}
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 mb-8 flex items-center space-x-5">
                       <img
-                        src={
-                          isProfessional 
-                            ? currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.firstName + ' ' + currentUser.lastName)}&background=3b82f6&color=fff`
-                            : currentUser.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.structureName)}&background=3b82f6&color=fff`
-                        }
-                        alt="Avatar"
-                        className="w-16 h-16 rounded-full object-cover"
+                        src={displayAvatar}
+                        alt="Il tuo avatar"
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-4 border-white shadow-sm flex-shrink-0"
                       />
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {isProfessional 
-                            ? `${currentUser.firstName} ${currentUser.lastName}`
-                            : currentUser.structureName
-                          }
+                      <div className="min-w-0">
+                        <h3 className="text-lg sm:text-xl font-bold text-slate-800 truncate">
+                          {displayName}
                         </h3>
-                        <p className="text-gray-500">{currentUser.email}</p>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-1">
-                          {isProfessional ? 'Professionista' : 'Struttura'}
+                        <p className="text-slate-500 text-sm sm:text-base truncate">{currentUser.email}</p>
+                        <span className="inline-block mt-2 px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full uppercase tracking-wider">
+                          {isProfessional ? 'Professionista' : 'Struttura Sportiva'}
                         </span>
                       </div>
-                    </div>
                   </div>
 
                   {/* Pulsanti azioni account */}
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <button 
                       onClick={() => onNavigate('profile', currentUser.$id)}
-                      className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-200 transition-all group"
                     >
                       <div className="flex items-center space-x-3">
-                        <Icon type="edit" className="w-5 h-5 text-gray-400" />
-                        <span className="font-medium text-gray-900">Modifica Profilo</span>
+                        <div className="bg-slate-100 p-2 rounded-lg group-hover:bg-blue-100 transition-colors">
+                            <Icon type="user" className="w-5 h-5 text-slate-600 group-hover:text-blue-600" />
+                        </div>
+                        <span className="font-bold text-slate-700 group-hover:text-blue-700">Modifica Profilo Pubblico</span>
                       </div>
-                      <Icon type="chevron-right" className="w-4 h-4 text-gray-400" />
+                      <span className="text-slate-400 group-hover:text-blue-600 font-bold">&rarr;</span>
                     </button>
 
-                    <button className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <button className="w-full flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors opacity-60 cursor-not-allowed" title="Disponibile a breve">
                       <div className="flex items-center space-x-3">
-                        <Icon type="key" className="w-5 h-5 text-gray-400" />
-                        <span className="font-medium text-gray-900">Cambia Password</span>
+                        <div className="bg-slate-100 p-2 rounded-lg">
+                            <Icon type="certificate" className="w-5 h-5 text-slate-500" />
+                        </div>
+                        <span className="font-bold text-slate-700">Modifica Password</span>
                       </div>
-                      <Icon type="chevron-right" className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded-md font-semibold">Presto</span>
                     </button>
                   </div>
                 </div>
@@ -131,101 +131,48 @@ export const Settings: React.FC<SettingsProps> = ({
 
               {/* Tab Privacy */}
               {activeTab === 'privacy' && (
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6">Privacy e Sicurezza</h2>
-                  
-                  <div className="space-y-6">
-                    {/* Visibilità profilo */}
-                    <div className="flex items-center justify-between py-3 border-b">
-                      <div>
-                        <h3 className="font-medium text-gray-900">Profilo Pubblico</h3>
-                        <p className="text-sm text-gray-500">Il tuo profilo è visibile agli altri utenti</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" defaultChecked className="sr-only peer" />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
-
-                    {/* Messaggi da sconosciuti */}
-                    <div className="flex items-center justify-between py-3 border-b">
-                      <div>
-                        <h3 className="font-medium text-gray-900">Messaggi da Sconosciuti</h3>
-                        <p className="text-sm text-gray-500">Permetti messaggi da utenti non connessi</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
-
-                    {/* Indicizzazione motori di ricerca */}
-                    <div className="flex items-center justify-between py-3">
-                      <div>
-                        <h3 className="font-medium text-gray-900">Indicizzazione Motori di Ricerca</h3>
-                        <p className="text-sm text-gray-500">Permetti ai motori di ricerca di indicizzare il tuo profilo</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" defaultChecked className="sr-only peer" />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
+                <div className="animate-fade-in">
+                  <h2 className="text-xl font-extrabold text-slate-800 mb-6">Privacy e Sicurezza</h2>
+                  <div className="space-y-1">
+                    {/* Toggles (Visuali) */}
+                    {[
+                        { title: "Profilo Pubblico", desc: "Il tuo profilo è visibile agli altri iscritti sulla piattaforma" },
+                        { title: "Messaggi da Sconosciuti", desc: "Permetti a chiunque di inviarti messaggi, anche se non connessi" },
+                        { title: "Motori di Ricerca", desc: "Permetti a Google di indicizzare il tuo profilo" }
+                    ].map((setting, idx) => (
+                        <div key={idx} className="flex items-center justify-between py-4 border-b border-slate-100 last:border-0">
+                            <div className="pr-4">
+                                <h3 className="font-bold text-slate-800">{setting.title}</h3>
+                                <p className="text-sm text-slate-500 mt-0.5">{setting.desc}</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                <input type="checkbox" defaultChecked={idx !== 1} className="sr-only peer" />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                    ))}
                   </div>
                 </div>
               )}
 
               {/* Tab Notifiche */}
               {activeTab === 'notifications' && (
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6">Notifiche</h2>
+                <div className="animate-fade-in">
+                  <h2 className="text-xl font-extrabold text-slate-800 mb-6">Notifiche</h2>
                   
-                  <div className="space-y-6">
-                    {/* Notifiche Email */}
+                  <div className="space-y-8">
                     <div>
-                      <h3 className="font-medium text-gray-900 mb-4">Notifiche Email</h3>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-700">Nuovi messaggi</span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" defaultChecked className="sr-only peer" />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                          </label>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-700">Nuove connessioni</span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" defaultChecked className="sr-only peer" />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                          </label>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-700">Nuove opportunità di lavoro</span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" className="sr-only peer" />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Notifiche Push */}
-                    <div>
-                      <h3 className="font-medium text-gray-900 mb-4">Notifiche Push</h3>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-700">Attività sui tuoi post</span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" defaultChecked className="sr-only peer" />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                          </label>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-700">Commenti sui tuoi post</span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" defaultChecked className="sr-only peer" />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                          </label>
-                        </div>
+                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Email</h3>
+                      <div className="space-y-1 bg-slate-50 rounded-xl border border-slate-100 p-2">
+                        {['Nuovi messaggi', 'Nuove richieste di connessione', 'Nuove opportunità di lavoro'].map((item, idx) => (
+                             <div key={idx} className="flex items-center justify-between p-3 rounded-lg hover:bg-white transition-colors">
+                                <span className="font-medium text-slate-700">{item}</span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" defaultChecked={idx !== 2} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -234,55 +181,39 @@ export const Settings: React.FC<SettingsProps> = ({
 
               {/* Tab Info App */}
               {activeTab === 'about' && (
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6">Informazioni App</h2>
+                <div className="animate-fade-in">
+                  <h2 className="text-xl font-extrabold text-slate-800 mb-6">Informazioni</h2>
                   
-                  <div className="space-y-6">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-                        <svg className="w-8 h-8 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2-9c-1.3-.54-2.2-1.79-2.2-3.21 0-1.93 1.57-3.5 3.5-3.5s3.5 1.57 3.5 3.5c0 1.42-.9 2.67-2.2 3.21C16.53 12.44 18 14.54 18 17h-2c0-2.21-1.79-4-4-4s-4 1.79-4 4H6c0-2.46 1.47-4.56 3.8-5.21z" />
-                        </svg>
-                      </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">SwimWaveUp</h3>
-                      <p className="text-gray-500 mb-4">Versione 1.0.0</p>
+                  <div className="text-center py-6 border-b border-slate-100 mb-6">
+                    <div className="w-20 h-20 mx-auto mb-4 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg transform -rotate-6">
+                        <Icon type="home" className="w-10 h-10 text-white" />
                     </div>
-
-                    <div className="space-y-4">
-                      <button className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                        <span className="font-medium text-gray-900">Termini di Servizio</span>
-                        <Icon type="chevron-right" className="w-4 h-4 text-gray-400" />
-                      </button>
-                      
-                      <button className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                        <span className="font-medium text-gray-900">Privacy Policy</span>
-                        <Icon type="chevron-right" className="w-4 h-4 text-gray-400" />
-                      </button>
-
-                      <button className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                        <span className="font-medium text-gray-900">Supporto</span>
-                        <Icon type="chevron-right" className="w-4 h-4 text-gray-400" />
-                      </button>
-
-                      <button className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                        <span className="font-medium text-gray-900">Segnala un Problema</span>
-                        <Icon type="chevron-right" className="w-4 h-4 text-gray-400" />
-                      </button>
-                    </div>
-
-                    {/* Pulsante Logout */}
-                    {onLogout && (
-                      <div className="pt-6 border-t">
-                        <button 
-                          onClick={onLogout}
-                          className="w-full flex items-center justify-center space-x-2 p-4 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium"
-                        >
-                          <Icon type="logout" className="w-5 h-5" />
-                          <span>Esci dall'App</span>
-                        </button>
-                      </div>
-                    )}
+                    <h3 className="text-3xl font-black text-slate-800 tracking-tight mb-1">
+                        SwimWave<span className="text-blue-600">Up</span>
+                    </h3>
+                    <p className="text-slate-500 font-medium">Versione 1.0.0-rc (Production)</p>
                   </div>
+
+                  <div className="space-y-2">
+                    {['Termini di Servizio', 'Privacy Policy', 'Supporto Tecnico'].map((item, idx) => (
+                        <button key={idx} className="w-full flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors text-left group">
+                            <span className="font-bold text-slate-700">{item}</span>
+                            <span className="text-slate-400 group-hover:text-slate-600 font-bold">&rarr;</span>
+                        </button>
+                    ))}
+                  </div>
+
+                  {onLogout && (
+                    <div className="pt-8 mt-8 border-t border-slate-100">
+                      <button 
+                        onClick={onLogout}
+                        className="w-full flex items-center justify-center space-x-2 p-4 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-600 hover:text-white transition-all active:scale-95"
+                      >
+                        <Icon type="logout" className="w-5 h-5" />
+                        <span>Esci dall'Account</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 

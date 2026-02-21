@@ -1,10 +1,8 @@
-// src/hooks/useAuth.tsx - CON RATE LIMITING
-import { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
-import { account, databases } from '../services/appwrite';
-import { APPWRITE_CONFIG } from '../utils/constants';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
+import { account } from '../services/appwrite';
 import { databaseService } from '../services/database';
 import type { Models } from 'appwrite';
-import { AuthenticatedUser } from '@/types';
+import { AuthenticatedUser, UserProfile, StructureProfile } from '@/types';
 
 interface AuthContextType {
   user: AuthenticatedUser | null;
@@ -13,7 +11,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (updates: any) => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile | StructureProfile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -22,7 +20,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth deve essere utilizzato all\'interno di un AuthProvider');
   }
   return context;
 };
@@ -34,35 +32,34 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Ref per Rate Limiting
   const loginAttemptRef = useRef<number>(0);
   const lastLoginAttempt = useRef<number>(0);
+  const isActionPending = useRef<boolean>(false);
 
-  // Load user profile data
-  const loadUserProfile = async (session: Models.Session): Promise<AuthenticatedUser> => {
+  const loadUserProfile = async (accountData: Models.User<Models.Preferences>): Promise<AuthenticatedUser> => {
     try {
-      // Try to get user profile first
-      const userProfile = await databaseService.getUserProfile(session.userId);
-      return { ...session, ...userProfile } as AuthenticatedUser;
+      const userProfile = await databaseService.getUserProfile(accountData.$id);
+      return { ...accountData, ...userProfile } as unknown as AuthenticatedUser;
     } catch (userError) {
       try {
-        // If user profile fails, try structure profile
-        const structureProfile = await databaseService.getStructureProfile(session.userId);
-        return { ...session, ...structureProfile } as AuthenticatedUser;
+        const structureProfile = await databaseService.getStructureProfile(accountData.$id);
+        return { ...accountData, ...structureProfile } as unknown as AuthenticatedUser;
       } catch (structureError) {
-        console.error('No profile found for user:', session.userId);
-        throw new Error('Profile not found');
+        console.error('Nessun profilo trovato nel database per l\'utente:', accountData.$id);
+        return accountData as unknown as AuthenticatedUser; 
       }
     }
   };
 
-  // Check authentication status
   const checkAuth = async () => {
+    setIsLoading(true);
     try {
-      const session = await account.getSession('current');
-      const userWithProfile = await loadUserProfile(session);
+      const accountData = await account.get();
+      const userWithProfile = await loadUserProfile(accountData);
       setUser(userWithProfile);
     } catch (error) {
-      console.log('No active session');
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -73,13 +70,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
-  // ✅ FIXED: Rate limiting e gestione sessioni esistenti
   const login = async (email: string, password: string) => {
+    if (isActionPending.current) return;
+    
     const now = Date.now();
     
-    // Rate limiting: massimo 3 tentativi ogni 60 secondi
     if (now - lastLoginAttempt.current < 60000 && loginAttemptRef.current >= 3) {
-      throw new Error('Troppi tentativi di login. Riprova tra un minuto.');
+      throw new Error('Troppi tentativi falliti. Riprova tra un minuto per sicurezza.');
     }
     
     if (now - lastLoginAttempt.current >= 60000) {
@@ -88,37 +85,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     loginAttemptRef.current++;
     lastLoginAttempt.current = now;
+    isActionPending.current = true;
+    setIsLoading(true);
 
     try {
-      setIsLoading(true);
-      
       try {
-        // Try to create session normally
-        const session = await account.createEmailSession(email, password);
-        const userWithProfile = await loadUserProfile(session);
+        await account.createEmailSession(email, password);
+        
+        const accountData = await account.get();
+        const userWithProfile = await loadUserProfile(accountData);
         setUser(userWithProfile);
-        // Reset counter on successful login
+        
         loginAttemptRef.current = 0;
       } catch (error: any) {
-        // If session already exists, delete it and try again
         if (error.type === 'user_session_already_exists') {
-          console.log('Session already exists, deleting and retrying...');
+          console.log('Una sessione esiste già, tento la rigenerazione silenziosa...');
           try {
             await account.deleteSession('current');
-            // Wait a bit before retry to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          } catch (deleteError) {
-            console.warn('Error deleting existing session:', deleteError);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await account.createEmailSession(email, password);
+            const accountData = await account.get();
+            const userWithProfile = await loadUserProfile(accountData);
+            setUser(userWithProfile);
+            loginAttemptRef.current = 0;
+          } catch (retryError) {
+            throw new Error('Errore durante la pulizia della sessione. Ricarica la pagina e riprova.');
           }
-          
-          // Retry login after delay
-          const session = await account.createEmailSession(email, password);
-          const userWithProfile = await loadUserProfile(session);
-          setUser(userWithProfile);
-          // Reset counter on successful login
-          loginAttemptRef.current = 0;
         } else if (error.code === 429) {
-          throw new Error('Troppi tentativi di accesso. Attendi qualche minuto prima di riprovare.');
+          throw new Error('Il server sta bloccando le richieste (Too Many Requests). Attendi qualche minuto.');
         } else {
           throw error;
         }
@@ -128,100 +122,73 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw error;
     } finally {
       setIsLoading(false);
+      isActionPending.current = false;
     }
   };
 
-  // ✅ FIXED: Registration without automatic login
   const register = async (email: string, password: string, name: string) => {
+    if (isActionPending.current) return;
+    
+    isActionPending.current = true;
+    setIsLoading(true);
+    
     try {
-      setIsLoading(true);
-      
-      // Create account
       const account_response = await account.create('unique()', email, password, name);
+      await account.createEmailSession(email, password);
       
-      // Initialize user profile using the account ID
-      await databaseService.initializeUserProfile({
-        $id: account_response.$id,
-        name,
-        email
-      });
-      
-      // Don't create session automatically - user will need to login
-      // This prevents session conflicts
+      await databaseService.initializeUserProfile(account_response);
+      await checkAuth();
       
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
     } finally {
       setIsLoading(false);
+      isActionPending.current = false;
     }
   };
 
   const logout = async () => {
+    setIsLoading(true);
     try {
       await account.deleteSession('current');
-      setUser(null);
-      // Reset login attempts on logout
-      loginAttemptRef.current = 0;
     } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
+      console.error('Logout error (session might already be dead):', error);
+    } finally {
+      setUser(null);
+      loginAttemptRef.current = 0;
+      setIsLoading(false);
     }
   };
 
-  // updateProfile function
-  const updateProfile = async (updates: any) => {
-    if (!user) throw new Error('No user logged in');
+  const updateProfile = async (updates: Partial<UserProfile | StructureProfile>) => {
+    if (!user) throw new Error('Nessun utente loggato');
     
     try {
-      // Handle different types of updates
-      const dbUpdates: any = { ...updates };
-      
-      // SPECIAL HANDLING: Experience List
-      if (updates.experienceList) {
-        await databaseService.updateUserProfile(user.$id, {
-          experienceList: updates.experienceList
-        });
-        await refreshProfile();
-        return;
-      }
-      
-      // SPECIAL HANDLING: Certifications List  
-      if (updates.certificationsList) {
-        await databaseService.updateUserProfile(user.$id, {
-          certificationsList: updates.certificationsList
-        });
-        await refreshProfile();
-        return;
-      }
-      
-      // REGULAR UPDATES: Use database service for all other updates
-      await databaseService.updateUserProfile(user.$id, dbUpdates);
+      await databaseService.updateUserProfile(user.$id, updates as Partial<UserProfile>);
       await refreshProfile();
-      
     } catch (error) {
       console.error('updateProfile error:', error);
       throw error;
     }
   };
 
-  // refreshProfile function  
   const refreshProfile = async () => {
     if (!user) return;
-    
     try {
-      const session = await account.getSession('current');
-      const updatedProfile = await loadUserProfile(session);
+      const accountData = await account.get();
+      const updatedProfile = await loadUserProfile(accountData);
       setUser(updatedProfile);
     } catch (error) {
       console.error('refreshProfile error:', error);
+      setUser(null);
       throw error;
     }
   };
 
   const value: AuthContextType = {
     user,
-    authenticated: !!user, // true se user esiste
+    authenticated: !!user, 
     isLoading,
     login,
     register,

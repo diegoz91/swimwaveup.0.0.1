@@ -1,24 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { JobCard } from './JobCard';
 import { Icon } from './Icon';
 import { CreateJobModal } from './CreateJobModal';
 import { databaseService } from '../src/services/database';
 import { useAuth } from '../src/hooks/useAuth';
-import type { MockJob, Job } from '../types';
+import type { Job } from '../types';
 
 interface LavoroViewProps {
   onSelectJob: (id: string) => void;
-  onApply: (job: Job | MockJob) => void;
+  onApply: (job: Job) => void;
   onShowMyApplications: () => void;
 }
 
 const FilterPill: React.FC<{ label: string; icon: string; active?: boolean; onClick?: () => void }> = ({ label, icon, active, onClick }) => (
     <button 
         onClick={onClick}
-        className={`flex-shrink-0 flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-full border transition ${
+        className={`flex-shrink-0 flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-full border transition-all ${
             active 
-                ? 'bg-blue-600 text-white border-blue-600' 
-                : 'bg-white text-slate-600 border-slate-300 hover:border-blue-400'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
+                : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50'
         }`}
     >
         <span>{icon}</span>
@@ -28,13 +28,12 @@ const FilterPill: React.FC<{ label: string; icon: string; active?: boolean; onCl
 
 export const LavoroView: React.FC<LavoroViewProps> = ({ onSelectJob, onApply, onShowMyApplications }) => {
     const { user } = useAuth();
-    const [jobs, setJobs] = useState<any[]>([]);
+    const [jobs, setJobs] = useState<Job[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState('Tutti');
     const [searchQuery, setSearchQuery] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-    // Controlla se l'utente è una struttura (può pubblicare annunci)
     const isStructure = user?.userType === 'structure';
 
     const filters = [
@@ -42,26 +41,17 @@ export const LavoroView: React.FC<LavoroViewProps> = ({ onSelectJob, onApply, on
         { label: 'Istruttore', icon: '👨‍🏫' },
         { label: 'Bagnino', icon: '🛡️' },
         { label: 'Tecnico', icon: '🔧' },
-        { label: 'Vicino a me', icon: '📍' },
+        { label: 'Coordinatore', icon: '📋' },
     ];
-
-    // Carica i lavori dal database
-    useEffect(() => {
-        loadJobs();
-    }, [activeFilter]);
 
     const loadJobs = async () => {
         setIsLoading(true);
         try {
-            const roleFilter = activeFilter !== 'Tutti' && activeFilter !== 'Vicino a me' 
-                ? activeFilter.toLowerCase() 
-                : undefined;
-            
+            const roleFilter = activeFilter !== 'Tutti' ? activeFilter.toLowerCase() : undefined;
             const fetchedJobs = await databaseService.getJobsWithStructures({
                 role: roleFilter,
                 isActive: true
             });
-            
             setJobs(fetchedJobs);
         } catch (error) {
             console.error('Error loading jobs:', error);
@@ -70,50 +60,60 @@ export const LavoroView: React.FC<LavoroViewProps> = ({ onSelectJob, onApply, on
         }
     };
 
-    // Filtra per ricerca
-    const filteredJobs = jobs.filter(job => {
-        if (!searchQuery) return true;
-        const query = searchQuery.toLowerCase();
-        return (
-            job.title?.toLowerCase().includes(query) ||
-            job.city?.toLowerCase().includes(query) ||
-            job.structure?.structureName?.toLowerCase().includes(query) ||
-            job.role?.toLowerCase().includes(query)
-        );
-    });
+    useEffect(() => {
+        loadJobs();
+    }, [activeFilter]);
+
+    const filteredJobs = useMemo(() => {
+        if (!searchQuery.trim()) return jobs;
+        const query = searchQuery.toLowerCase().trim();
+        
+        return jobs.filter(job => {
+            const titleMatch = job.title?.toLowerCase().includes(query) ?? false;
+            const cityMatch = job.city?.toLowerCase().includes(query) ?? false;
+            const roleMatch = job.role?.toLowerCase().includes(query) ?? false;
+            const structureMatch = job.structure?.structureName?.toLowerCase().includes(query) ?? false;
+            
+            return titleMatch || cityMatch || roleMatch || structureMatch;
+        });
+    }, [jobs, searchQuery]);
 
     const handleJobCreated = () => {
         setIsCreateModalOpen(false);
-        loadJobs(); // Ricarica la lista
+        loadJobs();
     };
 
     return (
-        <div className="max-w-4xl mx-auto">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Trova il tuo prossimo lavoro</h1>
-                <div className="flex items-center gap-4 mt-2 sm:mt-0">
-                    {/* Bottone pubblica annuncio - solo per strutture */}
+        <div className="max-w-4xl mx-auto w-full pb-20 md:pb-8">
+            {/* Header Lavoro */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-6 gap-4">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800">Bacheca Lavoro</h1>
+                    <p className="text-slate-500 text-sm mt-1">Trova le migliori opportunità nel mondo natatorio.</p>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-3">
+                    <button 
+                        onClick={onShowMyApplications}
+                        className="flex-shrink-0 text-sm font-bold text-blue-600 bg-blue-50 px-4 py-2.5 rounded-xl hover:bg-blue-100 transition-colors"
+                    >
+                        Le mie candidature
+                    </button>
                     {isStructure && (
                         <button 
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-green-700 transition"
+                            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition shadow-sm"
                         >
                             <Icon type="plus" className="w-4 h-4" />
                             Pubblica Annuncio
                         </button>
                     )}
-                    <button 
-                        onClick={onShowMyApplications}
-                        className="flex-shrink-0 text-sm font-semibold text-blue-600 hover:underline"
-                    >
-                        Le mie candidature &rarr;
-                    </button>
                 </div>
             </div>
             
             {/* Filtri */}
-            <div className="mb-4">
-                <div className="flex space-x-2 overflow-x-auto pb-2 -mx-4 px-4">
+            <div className="mb-5 -mx-4 px-4 sm:mx-0 sm:px-0">
+                <div className="flex space-x-2 overflow-x-auto pb-2 custom-scrollbar hide-scrollbar-mobile">
                     {filters.map(f => (
                         <FilterPill 
                             key={f.label} 
@@ -126,50 +126,55 @@ export const LavoroView: React.FC<LavoroViewProps> = ({ onSelectJob, onApply, on
             </div>
 
             {/* Barra di ricerca */}
-            <div className="relative mb-6">
+            <div className="relative mb-8 group">
                 <input 
                     type="text"
-                    placeholder="Cerca per ruolo, città, struttura..."
+                    placeholder="Cerca per ruolo, città o struttura..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-lg py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-white border-2 border-slate-200 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all shadow-sm"
                 />
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Icon type="search" className="h-6 w-6 text-gray-400" />
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                    <Icon type="search" className="h-5 w-5" />
                 </div>
             </div>
 
             {/* Lista lavori */}
             <div className="space-y-4">
                 {isLoading ? (
-                    <div className="flex justify-center py-12">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                    <div className="flex flex-col items-center justify-center py-16">
+                        <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-blue-600"></div>
+                        <p className="text-slate-500 font-medium mt-4">Caricamento annunci...</p>
                     </div>
                 ) : filteredJobs.length > 0 ? (
-                    filteredJobs.map(job => (
-                        <JobCard 
-                            key={job.$id} 
-                            job={job} 
-                            structure={job.structure}
-                            onSelectJob={() => onSelectJob(job.$id)} 
-                            onApply={() => onApply(job)} 
-                        />
-                    ))
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {filteredJobs.map(job => (
+                            <JobCard 
+                                key={job.$id} 
+                                job={job} 
+                                structure={job.structure}
+                                onSelectJob={() => onSelectJob(job.$id)} 
+                                onApply={() => onApply(job)} 
+                            />
+                        ))}
+                    </div>
                 ) : (
-                    <div className="text-center py-12 bg-white rounded-lg shadow-md">
-                        <Icon type="briefcase" className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-slate-600 mb-2">Nessun lavoro trovato</h3>
-                        <p className="text-slate-500">
+                    <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-slate-100">
+                        <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Icon type="briefcase" className="w-10 h-10 text-slate-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">Nessun lavoro trovato</h3>
+                        <p className="text-slate-500 max-w-md mx-auto">
                             {searchQuery 
-                                ? 'Prova a modificare i criteri di ricerca' 
-                                : 'Non ci sono annunci di lavoro al momento'}
+                                ? `Non ci sono risultati per "${searchQuery}". Prova a usare termini diversi o rimuovi i filtri.` 
+                                : 'Non ci sono annunci attivi in questa categoria al momento.'}
                         </p>
-                        {isStructure && (
+                        {searchQuery && (
                             <button 
-                                onClick={() => setIsCreateModalOpen(true)}
-                                className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition"
+                                onClick={() => { setSearchQuery(''); setActiveFilter('Tutti'); }}
+                                className="mt-6 font-semibold text-blue-600 hover:underline"
                             >
-                                Pubblica il primo annuncio
+                                Azzera ricerca
                             </button>
                         )}
                     </div>
@@ -177,7 +182,7 @@ export const LavoroView: React.FC<LavoroViewProps> = ({ onSelectJob, onApply, on
             </div>
 
             {/* Modal per creare annuncio */}
-            {isStructure && (
+            {isStructure && user && (
                 <CreateJobModal 
                     isOpen={isCreateModalOpen}
                     onClose={() => setIsCreateModalOpen(false)}

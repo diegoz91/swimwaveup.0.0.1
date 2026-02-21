@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Icon } from './Icon';
 import { databaseService } from '../src/services/database';
 
@@ -9,6 +9,21 @@ interface CreateJobModalProps {
     structureId: string;
 }
 
+const initialFormState = {
+    title: '',
+    description: '',
+    role: 'istruttore',
+    contractType: 'full-time',
+    city: '',
+    province: '',
+    salaryMin: '',
+    salaryMax: '',
+    workingHours: '',
+    requirements: '',
+    qualifications: '',
+    expiryDays: '30'
+};
+
 export const CreateJobModal: React.FC<CreateJobModalProps> = ({ 
     isOpen, 
     onClose, 
@@ -16,24 +31,30 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
     structureId 
 }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [formData, setFormData] = useState({
-        title: '',
-        description: '',
-        role: 'istruttore',
-        contractType: 'full-time',
-        city: '',
-        province: '',
-        salaryMin: '',
-        salaryMax: '',
-        workingHours: '',
-        requirements: '',
-        qualifications: '',
-        expiryDays: '30'
-    });
+    const [formData, setFormData] = useState(initialFormState);
+    const titleInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isOpen && titleInputRef.current) {
+            setTimeout(() => titleInputRef.current?.focus(), 100);
+        }
+    }, [isOpen]);
+
+    const handleSafeClose = () => {
+        const hasUnsavedChanges = JSON.stringify(formData) !== JSON.stringify(initialFormState);
+        if (hasUnsavedChanges) {
+            if (window.confirm("Hai dei dati non salvati. Sei sicuro di voler chiudere?")) {
+                setFormData(initialFormState);
+                onClose();
+            }
+        } else {
+            onClose();
+        }
+    };
 
     const roles = [
         { value: 'istruttore', label: 'Istruttore di Nuoto' },
-        { value: 'bagnino', label: 'Bagnino' },
+        { value: 'bagnino', label: 'Bagnino / Assistente Bagnanti' },
         { value: 'tecnico', label: 'Tecnico Manutentore' },
         { value: 'allenatore', label: 'Allenatore' },
         { value: 'coordinatore', label: 'Coordinatore' },
@@ -45,8 +66,8 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
         { value: 'full-time', label: 'Full-time' },
         { value: 'part-time', label: 'Part-time' },
         { value: 'stagionale', label: 'Stagionale' },
-        { value: 'collaborazione', label: 'Collaborazione' },
-        { value: 'tirocinio', label: 'Tirocinio' }
+        { value: 'collaborazione', label: 'Collaborazione Sportiva' },
+        { value: 'tirocinio', label: 'Tirocinio / Stage' }
     ];
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -57,19 +78,22 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (!formData.title || !formData.description || !formData.city) {
+        if (!formData.title.trim() || !formData.description.trim() || !formData.city.trim()) {
             alert('Compila tutti i campi obbligatori');
+            return;
+        }
+
+        if (formData.salaryMin && formData.salaryMax && parseInt(formData.salaryMin) > parseInt(formData.salaryMax)) {
+            alert('Lo stipendio minimo non può essere maggiore del massimo.');
             return;
         }
 
         setIsSubmitting(true);
 
         try {
-            // Calcola data di scadenza
             const expiryDate = new Date();
             expiryDate.setDate(expiryDate.getDate() + parseInt(formData.expiryDays));
 
-            // Prepara i requisiti come array
             const requirements = formData.requirements
                 .split('\n')
                 .map(r => r.trim())
@@ -81,40 +105,27 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                 .filter(q => q.length > 0);
 
             await databaseService.createJobPost(structureId, {
-                title: formData.title,
-                description: formData.description,
+                title: formData.title.trim(),
+                description: formData.description.trim(),
                 role: formData.role,
                 contractType: formData.contractType,
-                city: formData.city,
-                province: formData.province,
+                city: formData.city.trim(),
+                province: formData.province.trim().toUpperCase(),
                 salaryMin: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
                 salaryMax: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
-                workingHours: formData.workingHours || undefined,
+                workingHours: formData.workingHours.trim() || undefined,
                 requirements: requirements.length > 0 ? requirements : undefined,
                 qualificationsRequired: qualifications.length > 0 ? qualifications : undefined,
                 expiryDate: expiryDate.toISOString()
             });
 
-            // Reset form e chiudi
-            setFormData({
-                title: '',
-                description: '',
-                role: 'istruttore',
-                contractType: 'full-time',
-                city: '',
-                province: '',
-                salaryMin: '',
-                salaryMax: '',
-                workingHours: '',
-                requirements: '',
-                qualifications: '',
-                expiryDays: '30'
-            });
-
+            setFormData(initialFormState);
             onJobCreated();
+            onClose();
+            
         } catch (error) {
             console.error('Error creating job:', error);
-            alert('Errore durante la pubblicazione dell\'annuncio. Riprova.');
+            alert("Errore durante la pubblicazione dell'annuncio. Riprova tra qualche istante.");
         } finally {
             setIsSubmitting(false);
         }
@@ -123,52 +134,66 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+        <div 
+            className="fixed inset-0 bg-slate-900 bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity"
+            onClick={handleSafeClose}
+            role="dialog"
+            aria-modal="true"
+        >
+            <div 
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col overflow-hidden transform transition-all"
+                onClick={e => e.stopPropagation()}
+            >
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-gradient-to-r from-blue-600 to-blue-700">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Icon type="briefcase" className="w-6 h-6" />
-                        Pubblica Annuncio di Lavoro
+                <div className="flex items-center justify-between p-5 border-b border-blue-700 bg-gradient-to-r from-blue-600 to-blue-800 flex-shrink-0">
+                    <h2 className="text-xl font-extrabold text-white flex items-center gap-3">
+                        <div className="bg-white/20 p-1.5 rounded-lg">
+                            <Icon type="briefcase" className="w-6 h-6" />
+                        </div>
+                        Pubblica Annuncio
                     </h2>
                     <button 
-                        onClick={onClose}
-                        className="text-white hover:bg-white/20 rounded-full p-1 transition"
+                        onClick={handleSafeClose}
+                        className="text-blue-100 hover:text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+                        aria-label="Chiudi modale"
                     >
                         <Icon type="x" className="w-6 h-6" />
                     </button>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-140px)]">
+                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50">
                     <div className="p-6 space-y-6">
                         {/* Titolo */}
                         <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Titolo dell'annuncio *
+                            <label htmlFor="job-title" className="block text-sm font-bold text-slate-700 mb-2">
+                                Titolo dell'annuncio <span className="text-red-500">*</span>
                             </label>
                             <input
+                                id="job-title"
+                                ref={titleInputRef}
                                 type="text"
                                 name="title"
                                 value={formData.title}
                                 onChange={handleChange}
                                 placeholder="es. Istruttore di Nuoto per corsi bambini"
-                                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-shadow outline-none"
                                 required
                             />
                         </div>
 
                         {/* Ruolo e Contratto */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                    Ruolo *
+                                <label htmlFor="job-role" className="block text-sm font-bold text-slate-700 mb-2">
+                                    Ruolo <span className="text-red-500">*</span>
                                 </label>
                                 <select
+                                    id="job-role"
                                     name="role"
                                     value={formData.role}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none"
                                 >
                                     {roles.map(role => (
                                         <option key={role.value} value={role.value}>{role.label}</option>
@@ -176,14 +201,15 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                    Tipo di contratto *
+                                <label htmlFor="job-contract" className="block text-sm font-bold text-slate-700 mb-2">
+                                    Tipo di contratto <span className="text-red-500">*</span>
                                 </label>
                                 <select
+                                    id="job-contract"
                                     name="contractType"
                                     value={formData.contractType}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none"
                                 >
                                     {contractTypes.map(type => (
                                         <option key={type.value} value={type.value}>{type.label}</option>
@@ -193,151 +219,165 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                         </div>
 
                         {/* Località */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                    Città *
+                                <label htmlFor="job-city" className="block text-sm font-bold text-slate-700 mb-2">
+                                    Città <span className="text-red-500">*</span>
                                 </label>
                                 <input
+                                    id="job-city"
                                     type="text"
                                     name="city"
                                     value={formData.city}
                                     onChange={handleChange}
                                     placeholder="es. Milano"
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                    Provincia
+                                <label htmlFor="job-province" className="block text-sm font-bold text-slate-700 mb-2">
+                                    Provincia (Sigla)
                                 </label>
                                 <input
+                                    id="job-province"
                                     type="text"
                                     name="province"
                                     value={formData.province}
                                     onChange={handleChange}
                                     placeholder="es. MI"
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    maxLength={2}
+                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none uppercase"
                                 />
                             </div>
                         </div>
 
                         {/* Descrizione */}
                         <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Descrizione del lavoro *
+                            <label htmlFor="job-description" className="block text-sm font-bold text-slate-700 mb-2">
+                                Descrizione del lavoro <span className="text-red-500">*</span>
                             </label>
                             <textarea
+                                id="job-description"
                                 name="description"
                                 value={formData.description}
                                 onChange={handleChange}
-                                placeholder="Descrivi il ruolo, le responsabilità e l'ambiente di lavoro..."
-                                rows={4}
-                                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                placeholder="Descrivi le mansioni, l'ambiente di lavoro e cosa offrite..."
+                                rows={5}
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none bg-white outline-none"
                                 required
                             />
                         </div>
 
                         {/* Stipendio e Orari */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                <label htmlFor="job-salaryMin" className="block text-sm font-bold text-slate-700 mb-2 truncate">
                                     Stipendio min (€/mese)
                                 </label>
                                 <input
+                                    id="job-salaryMin"
                                     type="number"
                                     name="salaryMin"
+                                    min="0"
                                     value={formData.salaryMin}
                                     onChange={handleChange}
                                     placeholder="es. 1200"
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                <label htmlFor="job-salaryMax" className="block text-sm font-bold text-slate-700 mb-2 truncate">
                                     Stipendio max (€/mese)
                                 </label>
                                 <input
+                                    id="job-salaryMax"
                                     type="number"
                                     name="salaryMax"
+                                    min="0"
                                     value={formData.salaryMax}
                                     onChange={handleChange}
                                     placeholder="es. 1800"
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                    Orario di lavoro
+                                <label htmlFor="job-hours" className="block text-sm font-bold text-slate-700 mb-2">
+                                    Orario
                                 </label>
                                 <input
+                                    id="job-hours"
                                     type="text"
                                     name="workingHours"
                                     value={formData.workingHours}
                                     onChange={handleChange}
-                                    placeholder="es. 20h/settimana"
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="es. Turni / 20h"
+                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none"
                                 />
                             </div>
                         </div>
 
-                        {/* Requisiti */}
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Requisiti (uno per riga)
-                            </label>
-                            <textarea
-                                name="requirements"
-                                value={formData.requirements}
-                                onChange={handleChange}
-                                placeholder="Brevetto di Bagnino&#10;Esperienza minima 1 anno&#10;Disponibilità weekend"
-                                rows={3}
-                                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                            />
-                        </div>
-
-                        {/* Qualifiche */}
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Qualifiche richieste (una per riga)
-                            </label>
-                            <textarea
-                                name="qualifications"
-                                value={formData.qualifications}
-                                onChange={handleChange}
-                                placeholder="Istruttore FIN&#10;Brevetto Salvamento"
-                                rows={2}
-                                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                            />
+                        {/* Requisiti e Qualifiche */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label htmlFor="job-requirements" className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                                    <Icon type="check-double" className="w-4 h-4 text-green-600"/>
+                                    Requisiti
+                                </label>
+                                <textarea
+                                    id="job-requirements"
+                                    name="requirements"
+                                    value={formData.requirements}
+                                    onChange={handleChange}
+                                    placeholder="1 requisito per riga&#10;es. Esperienza pregressa&#10;Disponibilità weekend"
+                                    rows={4}
+                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none bg-white outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="job-qualifications" className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                                    <Icon type="certificate" className="w-4 h-4 text-blue-600"/>
+                                    Brevetti/Qualifiche
+                                </label>
+                                <textarea
+                                    id="job-qualifications"
+                                    name="qualifications"
+                                    value={formData.qualifications}
+                                    onChange={handleChange}
+                                    placeholder="1 qualifica per riga&#10;es. Brevetto Istruttore FIN&#10;Brevetto Salvamento"
+                                    rows={4}
+                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none bg-white outline-none"
+                                />
+                            </div>
                         </div>
 
                         {/* Durata annuncio */}
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Durata annuncio
+                        <div className="bg-blue-50/50 p-4 border border-blue-100 rounded-xl">
+                            <label htmlFor="job-expiry" className="block text-sm font-bold text-blue-900 mb-2">
+                                Scadenza annuncio
                             </label>
                             <select
+                                id="job-expiry"
                                 name="expiryDays"
                                 value={formData.expiryDays}
                                 onChange={handleChange}
-                                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full sm:w-1/2 px-4 py-3 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-blue-900 outline-none"
                             >
-                                <option value="7">7 giorni</option>
-                                <option value="14">14 giorni</option>
-                                <option value="30">30 giorni</option>
-                                <option value="60">60 giorni</option>
-                                <option value="90">90 giorni</option>
+                                <option value="7">Tra 7 giorni</option>
+                                <option value="14">Tra 14 giorni</option>
+                                <option value="30">Tra 30 giorni (Consigliato)</option>
+                                <option value="60">Tra 60 giorni</option>
                             </select>
+                            <p className="text-xs text-blue-600 mt-2">L'annuncio verrà rimosso automaticamente alla scadenza per mantenere la bacheca pulita.</p>
                         </div>
                     </div>
 
-                    {/* Footer con bottoni */}
-                    <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-200 bg-slate-50">
+                    {/* Footer con bottoni - Sempre visibile in basso */}
+                    <div className="sticky bottom-0 flex items-center justify-end gap-3 p-5 border-t border-slate-200 bg-white z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                         <button
                             type="button"
-                            onClick={onClose}
-                            className="px-6 py-2 border border-slate-300 text-slate-700 font-semibold rounded-full hover:bg-slate-100 transition"
+                            onClick={handleSafeClose}
+                            className="px-6 py-2.5 border-2 border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-colors"
                             disabled={isSubmitting}
                         >
                             Annulla
@@ -345,16 +385,16 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                             {isSubmitting ? (
                                 <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                                     Pubblicazione...
                                 </>
                             ) : (
                                 <>
-                                    <Icon type="send" className="w-4 h-4" />
+                                    <Icon type="send" className="w-5 h-5" />
                                     Pubblica Annuncio
                                 </>
                             )}

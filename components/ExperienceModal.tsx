@@ -1,4 +1,3 @@
-// src/components/ExperienceModal.tsx
 import React, { useState, useEffect } from 'react';
 import { Icon } from './Icon';
 import type { Experience } from '../types';
@@ -45,21 +44,10 @@ export const ExperienceModal: React.FC<ExperienceModalProps> = ({
   const validateForm = () => {
     const newErrors: Partial<Experience> = {};
     
-    if (!formData.role.trim()) {
-      newErrors.role = 'Il ruolo è obbligatorio';
-    }
-    
-    if (!formData.facility.trim()) {
-      newErrors.facility = 'La struttura è obbligatoria';
-    }
-    
-    if (!formData.period.trim()) {
-      newErrors.period = 'Il periodo è obbligatorio';
-    }
-    
-    if (!formData.description.trim()) {
-      newErrors.description = 'La descrizione è obbligatoria';
-    }
+    if (!formData.role.trim()) newErrors.role = 'Il ruolo è obbligatorio';
+    if (!formData.facility.trim()) newErrors.facility = 'La struttura è obbligatoria';
+    if (!formData.period.trim()) newErrors.period = 'Il periodo è obbligatorio';
+    if (!formData.description.trim()) newErrors.description = 'La descrizione è obbligatoria';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -67,7 +55,6 @@ export const ExperienceModal: React.FC<ExperienceModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
     
     setIsLoading(true);
@@ -76,7 +63,7 @@ export const ExperienceModal: React.FC<ExperienceModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error saving experience:', error);
-      alert('Errore nel salvare l\'esperienza. Riprova.');
+      alert("Errore nel salvare l'esperienza. Riprova.");
     } finally {
       setIsLoading(false);
     }
@@ -92,107 +79,128 @@ export const ExperienceModal: React.FC<ExperienceModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-900">
+    <div 
+      className="fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <div 
+        className="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl transform transition-all"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
+          <h2 id="modal-title" className="text-xl font-extrabold text-slate-800">
             {mode === 'add' ? 'Aggiungi Esperienza' : 'Modifica Esperienza'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-slate-400 hover:text-slate-700 hover:bg-slate-200 p-2 rounded-full transition-colors"
+            aria-label="Chiudi modale"
           >
-            <Icon type="x" className="w-6 h-6" />
+            <Icon type="x" className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+          {/* Campo Ruolo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ruolo *
+            <label htmlFor="exp-role" className="block text-sm font-bold text-slate-700 mb-1.5">
+              Ruolo <span className="text-red-500">*</span>
             </label>
             <input
+              id="exp-role"
               type="text"
               value={formData.role}
               onChange={(e) => handleChange('role', e.target.value)}
               placeholder="es. Istruttore di Nuoto Senior"
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.role ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                errors.role ? 'border-red-500 bg-red-50' : 'border-slate-200'
               }`}
             />
-            {errors.role && (
-              <p className="text-red-500 text-sm mt-1">{errors.role}</p>
-            )}
+            {errors.role && <p className="text-red-500 text-xs font-semibold mt-1.5">{errors.role}</p>}
           </div>
 
+          {/* Campo Struttura */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Struttura *
+            <label htmlFor="exp-facility" className="block text-sm font-bold text-slate-700 mb-1.5">
+              Struttura <span className="text-red-500">*</span>
             </label>
             <input
+              id="exp-facility"
               type="text"
               value={formData.facility}
               onChange={(e) => handleChange('facility', e.target.value)}
               placeholder="es. Piscina Comunale Milano"
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.facility ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                errors.facility ? 'border-red-500 bg-red-50' : 'border-slate-200'
               }`}
             />
-            {errors.facility && (
-              <p className="text-red-500 text-sm mt-1">{errors.facility}</p>
-            )}
+            {errors.facility && <p className="text-red-500 text-xs font-semibold mt-1.5">{errors.facility}</p>}
           </div>
 
+          {/* Campo Periodo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Periodo *
+            <label htmlFor="exp-period" className="block text-sm font-bold text-slate-700 mb-1.5">
+              Periodo <span className="text-red-500">*</span>
             </label>
             <input
+              id="exp-period"
               type="text"
               value={formData.period}
               onChange={(e) => handleChange('period', e.target.value)}
-              placeholder="es. 2022 - Presente"
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.period ? 'border-red-500' : 'border-gray-300'
+              placeholder="es. Set 2022 - Presente"
+              className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                errors.period ? 'border-red-500 bg-red-50' : 'border-slate-200'
               }`}
             />
-            {errors.period && (
-              <p className="text-red-500 text-sm mt-1">{errors.period}</p>
-            )}
+            {errors.period && <p className="text-red-500 text-xs font-semibold mt-1.5">{errors.period}</p>}
           </div>
 
+          {/* Campo Descrizione */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Descrizione *
+            <label htmlFor="exp-description" className="block text-sm font-bold text-slate-700 mb-1.5">
+              Descrizione <span className="text-red-500">*</span>
             </label>
             <textarea
+              id="exp-description"
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
-              placeholder="Descrivi le tue responsabilità e competenze in questo ruolo..."
+              placeholder="Descrivi le tue responsabilità e i traguardi raggiunti..."
               rows={4}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
-                errors.description ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-colors ${
+                errors.description ? 'border-red-500 bg-red-50' : 'border-slate-200'
               }`}
             />
-            {errors.description && (
-              <p className="text-red-500 text-sm mt-1">{errors.description}</p>
-            )}
+            {errors.description && <p className="text-red-500 text-xs font-semibold mt-1.5">{errors.description}</p>}
           </div>
 
-          <div className="flex space-x-4 pt-4">
+          {/* Footer Form */}
+          <div className="flex space-x-3 pt-5 border-t border-slate-100 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2.5 font-bold text-slate-600 bg-white border-2 border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-colors"
             >
               Annulla
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="flex-1 px-4 py-2.5 font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isLoading ? 'Salvando...' : (mode === 'add' ? 'Aggiungi' : 'Salva')}
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Icon type={mode === 'add' ? 'plus' : 'check-double'} className="w-4 h-4" />
+                  {mode === 'add' ? 'Aggiungi' : 'Salva Modifiche'}
+                </>
+              )}
             </button>
           </div>
         </form>

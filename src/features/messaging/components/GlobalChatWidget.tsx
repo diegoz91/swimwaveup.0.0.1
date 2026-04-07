@@ -28,7 +28,6 @@ export const GlobalChatWidget: React.FC = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Nascondi il widget se non loggato o sulla pagina /messages
   const isHidden = !authenticated || location.pathname.startsWith('/messages');
 
   const loadConversations = useCallback(async () => {
@@ -162,7 +161,7 @@ export const GlobalChatWidget: React.FC = () => {
           {totalUnread > 0 && !isOpen && (
              <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{totalUnread}</span>
           )}
-          <Icon type={isOpen ? 'chevron-down' : 'chevron-up'} className="w-5 h-5" />
+          <Icon type={(isOpen ? 'chevron-down' : 'chevron-up') as any} className="w-5 h-5" />
         </div>
       </div>
 

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
-import type { AuthenticatedUser, View } from '@/types/types';
+import type { AuthenticatedUser } from '@/types/types';
 
 interface SettingsProps {
   currentUser: AuthenticatedUser;
-  onNavigate: (view: View, id?: string) => void;
+  onNavigate: (view: string, id?: string) => void;
   onLogout?: () => void;
 }
 

@@ -1,0 +1,176 @@
+import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/context/ToastContext';
+import { Icon } from '@/components/ui/Icon';
+import { account } from '@/services/appwrite';
+
+export const LoginForm: React.FC = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    
+    const [showRecovery, setShowRecovery] = useState(false);
+    const [recoveryEmail, setRecoveryEmail] = useState('');
+    const [isRecovering, setIsRecovering] = useState(false);
+
+    const { login, isLoading } = useAuth();
+    const { showToast } = useToast();
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const from = location.state?.from?.pathname || '/';
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!email || !password) {
+            showToast('Inserisci email e password per continuare.', 'error');
+            return;
+        }
+
+        try {
+            await login(email, password);
+            showToast('Accesso effettuato con successo!', 'success');
+            navigate(from, { replace: true });
+        } catch (err: any) {
+            showToast(err.message || 'Credenziali non valide. Riprova.', 'error');
+        }
+    };
+
+    const handlePasswordRecovery = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!recoveryEmail) {
+            showToast('Inserisci la tua email per il recupero.', 'error');
+            return;
+        }
+
+        setIsRecovering(true);
+        try {
+            const resetUrl = `${window.location.origin}/reset-password`;
+            await account.createRecovery(recoveryEmail, resetUrl);
+            
+            showToast('Ti abbiamo inviato un link. Controlla la tua email.', 'success');
+            
+            setTimeout(() => {
+                setShowRecovery(false);
+                setRecoveryEmail('');
+            }, 3000);
+
+        } catch (err: any) {
+            showToast('Errore. Assicurati che l\'email sia corretta e riprova.', 'error');
+        } finally {
+            setIsRecovering(false);
+        }
+    };
+
+    return (
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-100 p-8 transform transition-all animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="text-center mb-8">
+                <div className="bg-blue-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200">
+                    <Icon type="users" className="w-8 h-8" />
+                </div>
+                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Bentornato in SwimIn</h1>
+                <p className="text-slate-500 mt-2">Accedi al tuo network professionale.</p>
+            </div>
+
+            {!showRecovery ? (
+                <>
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1.5" htmlFor="email">Email</label>
+                            <input
+                                id="email"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none bg-slate-50 focus:bg-white"
+                                placeholder="nome@esempio.com"
+                                disabled={isLoading}
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between items-center mb-1.5">
+                                <label className="block text-sm font-semibold text-slate-700" htmlFor="password">Password</label>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowRecovery(true)}
+                                    className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                                >
+                                    Password dimenticata?
+                                </button>
+                            </div>
+                            <input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none bg-slate-50 focus:bg-white"
+                                placeholder="••••••••"
+                                disabled={isLoading}
+                                required
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md flex justify-center items-center disabled:opacity-70 active:scale-95"
+                        >
+                            {isLoading ? <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" /> : 'Accedi'}
+                        </button>
+                    </form>
+
+                    <div className="mt-8 text-center border-t border-slate-100 pt-6">
+                        <p className="text-slate-600">
+                            Non hai ancora un account?{' '}
+                            <Link to="/register" className="text-blue-600 font-bold hover:text-blue-800 transition-colors">
+                                Iscriviti ora
+                            </Link>
+                        </p>
+                    </div>
+                </>
+            ) : (
+                <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="mb-6">
+                        <button 
+                            onClick={() => setShowRecovery(false)}
+                            className="flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors mb-4"
+                        >
+                            <Icon type="arrow-left" className="w-4 h-4 mr-1" />
+                            Torna al Login
+                        </button>
+                        <h2 className="text-xl font-bold text-slate-900">Recupera Password</h2>
+                        <p className="text-sm text-slate-500 mt-1">Inserisci la tua email, ti invieremo le istruzioni.</p>
+                    </div>
+
+                    <form onSubmit={handlePasswordRecovery} className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1.5" htmlFor="recoveryEmail">Email Registrata</label>
+                            <input
+                                id="recoveryEmail"
+                                type="email"
+                                value={recoveryEmail}
+                                onChange={(e) => setRecoveryEmail(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none bg-slate-50 focus:bg-white"
+                                placeholder="nome@esempio.com"
+                                disabled={isRecovering}
+                                required
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={isRecovering}
+                            className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md flex justify-center items-center disabled:opacity-70 active:scale-95"
+                        >
+                            {isRecovering ? <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" /> : 'Invia Link'}
+                        </button>
+                    </form>
+                </div>
+            )}
+        </div>
+    );
+};

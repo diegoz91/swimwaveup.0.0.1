@@ -18,6 +18,7 @@ const statusStyles: Record<Application['status'], { text: string; icon: IconType
     'reviewed': { text: 'In Revisione', icon: 'search', color: 'text-blue-700', bgColor: 'bg-blue-100' },
     'accepted': { text: 'Accettata', icon: 'certificate', color: 'text-green-700', bgColor: 'bg-green-100' },
     'rejected': { text: 'Rifiutata', icon: 'x', color: 'text-red-700', bgColor: 'bg-red-100' },
+    'hired': { text: 'Assunto', icon: 'sparkles', color: 'text-green-700', bgColor: 'bg-green-100' }, // 💡 AGGIUNTO STATO HIRED
 };
 
 export const ApplicationCard: React.FC<ApplicationCardProps> = ({ 

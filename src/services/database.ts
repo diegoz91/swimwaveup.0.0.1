@@ -20,7 +20,7 @@ import type {
 
 const { databaseId, collections } = APPWRITE_CONFIG;
 
-// Fallback collections per la Fase 4
+// 💡 FIX TYPESCRIPT: Impostiamo i fallback per evitare errori "string | undefined" su Vercel
 const ANNOUNCEMENTS_COLLECTION = (collections as any).announcements || 'announcements_mock_id';
 const SHIFTS_COLLECTION = (collections as any).shifts || 'shifts_mock_id';
 const FACILITIES_COLLECTION = (collections as any).facilities || 'facilities_mock_id';
@@ -399,12 +399,12 @@ export const databaseService = {
     // ==========================================
     async createSquadAnnouncement(data: Partial<SquadAnnouncement>) {
         try {
-            return await databases.createDocument<SquadAnnouncement>(databaseId, collections.announcements, ID.unique(), data);
+            return await databases.createDocument<SquadAnnouncement>(databaseId, ANNOUNCEMENTS_COLLECTION, ID.unique(), data);
         } catch(e) { console.error("🔥 Errore salvataggio Annuncio su DB:", e); return null; }
     },
     async getSquadAnnouncements(structureId: string) {
         try {
-            const res = await databases.listDocuments<SquadAnnouncement>(databaseId, collections.announcements, [
+            const res = await databases.listDocuments<SquadAnnouncement>(databaseId, ANNOUNCEMENTS_COLLECTION, [
                 Query.equal('structureId', structureId), 
                 Query.orderDesc('$createdAt')
             ]);
@@ -413,7 +413,7 @@ export const databaseService = {
     },
     async deleteSquadAnnouncement(announcementId: string) {
         try {
-            await databases.deleteDocument(databaseId, collections.announcements, announcementId);
+            await databases.deleteDocument(databaseId, ANNOUNCEMENTS_COLLECTION, announcementId);
             return true;
         } catch(e) { 
             console.error("Errore eliminazione annuncio", e); 
@@ -422,12 +422,12 @@ export const databaseService = {
     },
     async createSquadShift(data: Partial<SquadShift>) {
         try {
-            return await databases.createDocument<SquadShift>(databaseId, collections.shifts, ID.unique(), data);
+            return await databases.createDocument<SquadShift>(databaseId, SHIFTS_COLLECTION, ID.unique(), data);
         } catch(e) { console.error("🔥 Errore salvataggio Turno su DB:", e); return null; }
     },
     async getSquadShifts(structureId: string) {
         try {
-            const res = await databases.listDocuments<SquadShift>(databaseId, collections.shifts, [
+            const res = await databases.listDocuments<SquadShift>(databaseId, SHIFTS_COLLECTION, [
                 Query.equal('structureId', structureId), 
                 Query.orderAsc('date')
             ]);
@@ -436,7 +436,7 @@ export const databaseService = {
     },
     async deleteSquadShift(shiftId: string) {
         try {
-            await databases.deleteDocument(databaseId, collections.shifts, shiftId);
+            await databases.deleteDocument(databaseId, SHIFTS_COLLECTION, shiftId);
         } catch(e) { console.error("Errore eliminazione turno", e); }
     },
 
@@ -492,7 +492,7 @@ export const databaseService = {
         } catch(e) { console.error("🔥 Errore lettura Pagine Gestite:", e); return []; }
     },
 
-    // 💡 NUOVO: Toggle Followers Pagina Aziendale
+    // 💡 Toggle Followers Pagina Aziendale
     async toggleFollowFacility(facilityId: string, userId: string) {
         try {
             const fac = await databases.getDocument<Facility>(databaseId, FACILITIES_COLLECTION, facilityId);

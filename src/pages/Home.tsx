@@ -113,7 +113,11 @@ const Home: React.FC = () => {
     if (selectedPost) {
         return (
             <div className="pt-20 md:pt-24 px-4 sm:px-6 max-w-3xl mx-auto w-full pb-8 animate-in slide-in-from-right-8 duration-300">
-                <PostDetailView post={selectedPost} onBack={() => setSelectedPost(null)} />
+                <PostDetailView 
+                    post={selectedPost} 
+                    onBack={() => setSelectedPost(null)} 
+                    onSelectProfile={(id) => navigate(`/profile/${id}`)}
+                />
             </div>
         );
     }
@@ -152,7 +156,7 @@ const Home: React.FC = () => {
                     </div>
                 )}
 
-                <PostCreator user={user} onPostCreated={() => loadFeed(0, false)} />
+                <PostCreator onPostCreated={() => loadFeed(0, false)} />
 
                 <div className="flex flex-col gap-5 relative">
                     {isLoading ? (

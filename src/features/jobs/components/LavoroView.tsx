@@ -127,8 +127,8 @@ const fuzzyMatch = (pattern: string, str: string) => {
         if (p[patternIdx] === s[strIdx]) patternIdx++;
         strIdx++;
     }
-    // Tolleranza: se ha matchato almeno l'80% dei caratteri in sequenza
-    return patternLength !== 0 && (patternIdx / p.length) > 0.8;
+    // 💡 FIX VERCEL: Usa la lunghezza del pattern (p.length) invece della variabile inesistente patternLength
+    return p.length !== 0 && (patternIdx / p.length) > 0.8;
 };
 
 export const LavoroView: React.FC<LavoroViewProps> = ({ onSelectJob, onApply, onShowMyApplications }) => {

@@ -8,10 +8,18 @@ import { useToast } from '@/context/ToastContext';
 interface CreatePostModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onCreatePost: (content: string, media: Media[]) => Promise<void> | void;
+    onCreatePost: (content: string, media: Media[], category: string) => Promise<void> | void;
     user: UserProfile | StructureProfile;
     initialMediaType?: 'photo' | null;
 }
+
+const CATEGORIES = [
+    { id: 'generale', label: 'Generale', icon: 'globe' },
+    { id: 'allenamento', label: 'Allenamento', icon: 'clock' },
+    { id: 'gara', label: 'Gara & Risultati', icon: 'star' },
+    { id: 'tecnica', label: 'Tecnica & Formazione', icon: 'certificate' },
+    { id: 'normative', label: 'Normative & Sicurezza', icon: 'info' }
+];
 
 export const CreatePostModal: React.FC<CreatePostModalProps> = ({ 
     isOpen, onClose, onCreatePost, user, initialMediaType 
@@ -19,6 +27,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
     const [content, setContent] = useState('');
     const [mediaFiles, setMediaFiles] = useState<{ file: File, preview: string, alt: string }[]>([]);
     const [mediaType, setMediaType] = useState<'photo' | null>(initialMediaType || null);
+    const [selectedCategory, setSelectedCategory] = useState('generale');
     const [uploading, setUploading] = useState(false);
     
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -28,10 +37,6 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
         if (isOpen) setTimeout(() => textareaRef.current?.focus(), 100);
     }, [isOpen]);
 
-    useEffect(() => {
-        if (initialMediaType && isOpen) setMediaType(initialMediaType);
-    }, [initialMediaType, isOpen]);
-
     const isProfessional = user.userType === 'professional';
     const authorName = isProfessional ? `${(user as UserProfile).firstName || ''} ${(user as UserProfile).lastName || ''}`.trim() : (user as StructureProfile).structureName;
     const avatarUrl = isProfessional ? (user as UserProfile).avatar : (user as StructureProfile).logo;
@@ -39,9 +44,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
     const handleSafeClose = () => {
         if (content.trim() !== '' || mediaFiles.length > 0) {
-            if (window.confirm("Hai un post in sospeso. Sei sicuro di voler annullare?")) {
-                onClose();
-            }
+            if (window.confirm("Hai un post in sospeso. Sei sicuro di voler annullare?")) onClose();
         } else {
             onClose();
         }
@@ -59,7 +62,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 });
                 uploadedMedia = await Promise.all(uploadPromises);
             }
-            await onCreatePost(content.trim(), uploadedMedia);
+            await onCreatePost(content.trim(), uploadedMedia, selectedCategory);
             showToast('Post pubblicato con successo!', 'success');
         } catch (error) {
             showToast("Errore durante la pubblicazione.", "error");
@@ -86,8 +89,16 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                         <img src={displayAvatar} alt="Avatar" className="w-12 h-12 rounded-full mr-3 object-cover border border-slate-100" />
                         <div>
                             <p className="font-bold text-slate-800 leading-tight">{authorName}</p>
-                            <div className="flex items-center gap-1 text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded mt-1 w-max">
-                                <Icon type="globe" className="w-3 h-3" /> Pubblico
+                            <div className="flex flex-wrap gap-2 mt-1">
+                                {CATEGORIES.map(cat => (
+                                    <button 
+                                        key={cat.id}
+                                        onClick={() => setSelectedCategory(cat.id)}
+                                        className={`flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded border transition-colors ${selectedCategory === cat.id ? 'bg-blue-100 text-blue-700 border-blue-200 shadow-sm' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}
+                                    >
+                                        <Icon type={cat.icon as any} className="w-3 h-3" /> {cat.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>

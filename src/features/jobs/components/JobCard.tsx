@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import type { Job, StructureProfile } from '@/types/types';
+import type { Job, StructureProfile, UserProfile } from '@/types/types';
 import { Icon } from '@/components/ui/Icon';
+import { useAuth } from '@/hooks/useAuth';
 
 interface JobCardProps {
     job: Job;
@@ -36,83 +37,91 @@ const formatRelativeDate = (dateString?: string) => {
 
 const capitalize = (str?: string) => {
     if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+const getSwimMatchScore = (user: UserProfile, job: Job) => {
+    const reqs = job.requirements || [];
+    const quals = job.qualificationsRequired || [];
+    const totalReqs = [...reqs, ...quals];
+
+    if (totalReqs.length === 0) return null;
+
+    const userCerts = (user.certificationsList || []).map(c => {
+        try { const p = JSON.parse(c as string); return `${p.name} ${p.category} ${p.issuer}`.toLowerCase(); } 
+        catch { return String(c).toLowerCase(); }
+    });
+    const userExp = (user.experienceList || []).map(e => {
+        try { const p = JSON.parse(e as string); return `${p.role} ${p.description}`.toLowerCase(); } 
+        catch { return String(e).toLowerCase(); }
+    }).join(" ");
+
+    let metCount = 0;
+    totalReqs.forEach(req => {
+        const reqLower = req.toLowerCase();
+        let isMet = false;
+        if (userCerts.some(cert => cert.includes(reqLower) || reqLower.includes(cert))) isMet = true;
+        if (!isMet && (userExp.includes(reqLower) || reqLower.includes(userExp))) isMet = true;
+        if (!isMet && reqLower.includes('esperienz') && userExp.length > 5) isMet = true;
+        if (isMet) metCount++;
+    });
+
+    return Math.round((metCount / totalReqs.length) * 100);
 };
 
 export const JobCard: React.FC<JobCardProps> = ({ job, structure, onSelectJob, onApply }) => {
-    
+    const { user } = useAuth();
+
     const { structureName, structureLogo } = useMemo(() => {
         const name = structure?.structureName || job.structureName || 'Struttura Non Specificata';
         const logo = structure?.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=eff6ff&color=1d4ed8`;
         return { structureName: name, structureLogo: logo };
     }, [structure, job.structureName]);
 
+    // SwimMatch (Solo Professionisti)
+    const matchScore = user?.userType === 'professional' ? getSwimMatchScore(user as UserProfile, job) : null;
+    
+    const getMatchStyle = (score: number) => {
+        if (score >= 80) return 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-green-200';
+        if (score >= 50) return 'bg-gradient-to-r from-amber-400 to-orange-400 text-white shadow-amber-200';
+        return 'bg-gradient-to-r from-slate-400 to-slate-500 text-white shadow-slate-200';
+    };
+
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-200 transition-all duration-300 flex flex-col h-full group">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-200 transition-all duration-300 flex flex-col h-full group relative">
+            
+            {/* BADGE SWIMMATCH PREDITTIVO */}
+            {matchScore !== null && (
+                <div className={`absolute -top-3 -right-2 z-10 text-[11px] font-extrabold px-3 py-1 rounded-full shadow-lg flex items-center gap-1 ${getMatchStyle(matchScore)} animate-in zoom-in duration-300`}>
+                    <Icon type="sparkles" className="w-3 h-3" />
+                    SwimMatch {matchScore}%
+                </div>
+            )}
+
             <div className="p-5 flex-1">
                 <div className="flex items-start justify-between gap-4">
-                    {/* Area Logo e Titoli */}
                     <div className="flex items-start space-x-4 min-w-0">
                         <img 
                             src={structureLogo} 
-                            alt={`Logo di ${structureName}`} 
-                            className="w-14 h-14 rounded-xl object-cover border border-slate-100 shadow-sm flex-shrink-0 bg-slate-50" 
-                            loading="lazy"
+                            alt={`Logo ${structureName}`} 
+                            className="w-14 h-14 rounded-xl object-cover border border-slate-100 shadow-sm bg-slate-50" 
                         />
-                        <div className="min-w-0">
+                        <div className="min-w-0 pr-4">
                             <h3 
-                                className="text-lg font-extrabold text-slate-800 hover:text-blue-600 transition-colors cursor-pointer line-clamp-2 leading-tight mb-1 outline-none focus-visible:underline" 
+                                className="text-lg font-extrabold text-slate-800 hover:text-blue-600 transition-colors cursor-pointer line-clamp-2 leading-tight mb-1" 
                                 onClick={() => onSelectJob?.(job.$id)}
-                                title={job.title}
                             >
                                 {job.title}
                             </h3>
-                            <p className="text-sm font-medium text-slate-600 truncate" title={structureName}>
-                                {structureName}
-                            </p>
+                            <p className="text-sm font-medium text-slate-600 truncate">{structureName}</p>
                         </div>
                     </div>
-                    
-                    {/* Azione Rapida: Salva Annuncio */}
-                    <button 
-                        className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-red-200"
-                        aria-label="Salva questo annuncio"
-                        title="Salva"
-                    >
-                        <Icon type="heart" className="w-5 h-5"/>
-                    </button>
                 </div>
                 
-                {/* Meta Tags del Lavoro */}
                 <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500 mt-4">
-                    {job.role && (
-                        <span className="flex items-center bg-slate-100 px-2.5 py-1 rounded-md text-slate-700">
-                            {capitalize(job.role)}
-                        </span>
-                    )}
-                    {job.contractType && (
-                        <span className="flex items-center bg-slate-100 px-2.5 py-1 rounded-md">
-                            <Icon type="briefcase" className="w-3.5 h-3.5 mr-1" />
-                            {capitalize(job.contractType)}
-                        </span>
-                    )}
-                    {job.city && (
-                        <span className="flex items-center bg-slate-100 px-2.5 py-1 rounded-md">
-                            <Icon type="location" className="w-3.5 h-3.5 mr-1" />
-                            <span className="truncate max-w-[120px]">{capitalize(job.city)}{job.province ? ` (${job.province})` : ''}</span>
-                        </span>
-                    )}
-                    {(job.salaryMin || job.salaryMax) && (
-                        <span className="flex items-center bg-green-50 text-green-700 px-2.5 py-1 rounded-md">
-                            <Icon type="star" className="w-3.5 h-3.5 mr-1" />
-                            {job.salaryMin && job.salaryMax 
-                                ? `€${job.salaryMin} - €${job.salaryMax}`
-                                : job.salaryMin 
-                                    ? `Da €${job.salaryMin}`
-                                    : `Fino a €${job.salaryMax}`
-                            }
-                        </span>
-                    )}
+                    {job.role && <span className="bg-slate-100 px-2.5 py-1 rounded-md text-slate-700 capitalize">{job.role}</span>}
+                    {job.contractType && <span className="flex items-center bg-slate-100 px-2.5 py-1 rounded-md capitalize"><Icon type="briefcase" className="w-3.5 h-3.5 mr-1" />{job.contractType}</span>}
+                    {job.city && <span className="flex items-center bg-slate-100 px-2.5 py-1 rounded-md"><Icon type="location" className="w-3.5 h-3.5 mr-1" /><span className="truncate max-w-[120px]">{capitalize(job.city)}{job.province ? ` (${job.province})` : ''}</span></span>}
                 </div>
                 
                 <p className="text-xs text-slate-400 mt-4 font-medium flex items-center gap-1.5">
@@ -131,10 +140,9 @@ export const JobCard: React.FC<JobCardProps> = ({ job, structure, onSelectJob, o
                 </button>
                 <button 
                     onClick={() => onApply?.(job)} 
-                    className="w-full sm:w-auto text-center bg-blue-600 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-all text-sm shadow-sm active:scale-95 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1"
+                    className="w-full sm:w-auto text-center bg-blue-600 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-all text-sm shadow-sm active:scale-95 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                    <Icon type="send" className="w-4 h-4" />
-                    Candidati Ora
+                    <Icon type="send" className="w-4 h-4" /> Candidati Ora
                 </button>
             </div>
         </div>

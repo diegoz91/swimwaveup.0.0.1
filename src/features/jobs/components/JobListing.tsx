@@ -1,6 +1,7 @@
 import React from 'react';
-import type { Job } from '@/types/types';
+import type { Job, UserProfile } from '@/types/types';
 import { Icon } from '@/components/ui/Icon';
+import { useAuth } from '@/hooks/useAuth';
 
 interface JobListingProps {
   job: Job; 
@@ -8,14 +9,43 @@ interface JobListingProps {
   view?: 'dashboard' | 'lavoro';
 }
 
+const getSwimMatchScore = (user: UserProfile, job: Job) => {
+    const reqs = job.requirements || [];
+    const quals = job.qualificationsRequired || [];
+    const totalReqs = [...reqs, ...quals];
+    if (totalReqs.length === 0) return null;
+
+    const userCerts = (user.certificationsList || []).map(c => {
+        try { return JSON.parse(c as string).name.toLowerCase(); } catch { return String(c).toLowerCase(); }
+    });
+    const userExp = (user.experienceList || []).map(e => {
+        try { return JSON.parse(e as string).role.toLowerCase(); } catch { return String(e).toLowerCase(); }
+    }).join(" ");
+
+    let metCount = 0;
+    totalReqs.forEach(req => {
+        const reqLower = req.toLowerCase();
+        let isMet = false;
+        if (userCerts.some(cert => cert.includes(reqLower) || reqLower.includes(cert))) isMet = true;
+        if (!isMet && (userExp.includes(reqLower) || reqLower.includes(userExp))) isMet = true;
+        if (!isMet && reqLower.includes('esperienz') && userExp.length > 5) isMet = true;
+        if (isMet) metCount++;
+    });
+
+    return Math.round((metCount / totalReqs.length) * 100);
+};
+
 export const JobListing: React.FC<JobListingProps> = ({ 
   job, 
   onSelectJob, 
   view = 'lavoro' 
 }) => {
+  const { user } = useAuth();
   const structureName = job.structureName || 'Struttura Non Specificata';
   const locationString = job.city ? `${job.city}${job.province ? ` (${job.province})` : ''}` : 'Sede non specificata';
   const displayLogo = job.facilityLogo || `https://ui-avatars.com/api/?name=${encodeURIComponent(structureName)}&background=f8fafc&color=3b82f6`;
+
+  const matchScore = user?.userType === 'professional' ? getSwimMatchScore(user as UserProfile, job) : null;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -32,39 +62,37 @@ export const JobListing: React.FC<JobListingProps> = ({
           role="button"
           tabIndex={0}
           onKeyDown={handleKeyDown}
-          aria-label={`Visualizza offerta di lavoro: ${job.title}`}
+          aria-label={`Visualizza offerta: ${job.title}`}
         >
-            <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
-            
-            <div className="p-4 sm:p-5">
-                 <p className="text-[10px] font-bold text-indigo-600 mb-2.5 uppercase tracking-wider flex items-center gap-1">
-                    <Icon type="sparkles" className="w-3.5 h-3.5" />
-                    Opportunità in Evidenza
-                 </p>
-                <div className="flex items-start gap-4">
-                    <img 
-                        src={displayLogo} 
-                        alt={`Logo ${structureName}`} 
-                        className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm flex-shrink-0 bg-slate-50" 
-                        loading="lazy"
-                    />
-                    <div className="min-w-0 flex-1">
-                        <h3 className="text-base font-bold text-slate-800 group-hover:text-indigo-600 transition-colors line-clamp-1">
-                            {job.title}
-                        </h3>
-                        <p className="text-slate-600 text-sm truncate mt-0.5">{structureName}</p>
-                        <div className="flex flex-wrap items-center text-xs text-slate-500 mt-1.5 gap-3">
-                            <span className="flex items-center">
-                                <Icon type="location" className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                                <span className="truncate max-w-[120px]">{locationString}</span>
+            {matchScore !== null && matchScore >= 70 && (
+                <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg flex items-center gap-1 z-10" title={`Ottimo Match: ${matchScore}%`}>
+                    <Icon type="sparkles" className="w-3 h-3" /> {matchScore}%
+                </div>
+            )}
+            <div className="p-4 flex items-start gap-4">
+                <img 
+                    src={displayLogo} 
+                    alt={`Logo ${structureName}`} 
+                    className="w-12 h-12 rounded-xl object-cover border border-slate-100 bg-slate-50 flex-shrink-0"
+                    loading="lazy"
+                />
+                <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
+                        {job.title}
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1 truncate">{structureName}</p>
+                    
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[11px] font-medium">
+                        <span className="flex items-center text-slate-400">
+                            <Icon type="location" className="w-3.5 h-3.5 mr-1" />
+                            <span className="truncate max-w-[100px]">{locationString}</span>
+                        </span>
+                        {job.contractType && (
+                            <span className="flex items-center text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded capitalize">
+                                <Icon type="briefcase" className="w-3.5 h-3.5 mr-1" />
+                                <span>{job.contractType}</span>
                             </span>
-                            {job.contractType && (
-                                <span className="flex items-center">
-                                    <Icon type="briefcase" className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                                    <span>{job.contractType}</span>
-                                </span>
-                            )}
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -74,7 +102,7 @@ export const JobListing: React.FC<JobListingProps> = ({
 
   return (
     <div 
-        className="flex items-start gap-3 cursor-pointer group p-2 hover:bg-slate-50 rounded-xl transition-colors focus:outline-none focus:bg-slate-50 focus:ring-2 focus:ring-blue-200" 
+        className="flex items-start gap-3 cursor-pointer group p-2 hover:bg-slate-50 rounded-xl transition-colors focus:outline-none focus:bg-slate-50 focus:ring-2 focus:ring-blue-200 relative" 
         onClick={onSelectJob}
         role="button"
         tabIndex={0}
@@ -88,7 +116,7 @@ export const JobListing: React.FC<JobListingProps> = ({
         loading="lazy"
       />
       <div className="min-w-0 flex-1">
-        <p className="font-bold text-sm text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-1 leading-tight">
+        <p className="font-bold text-sm text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-1 leading-tight pr-8">
             {job.title}
         </p>
         <p className="text-xs text-slate-500 truncate mt-0.5">{structureName}</p>
@@ -97,6 +125,12 @@ export const JobListing: React.FC<JobListingProps> = ({
           <span className="truncate">{locationString}</span>
         </div>
       </div>
+      
+      {matchScore !== null && matchScore >= 70 && (
+        <div className="absolute top-2 right-2 flex items-center justify-center bg-green-100 text-green-600 rounded-full p-1" title={`Ottimo Match: ${matchScore}%`}>
+            <Icon type="check-double" className="w-3 h-3" />
+        </div>
+      )}
     </div>
   );
 };

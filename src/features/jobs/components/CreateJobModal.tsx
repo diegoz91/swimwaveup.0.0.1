@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { databaseService } from '@/services/database';
 import { useToast } from '@/context/ToastContext';
+import type { StructureProfile } from '@/types/types';
 
 interface CreateJobModalProps {
     isOpen: boolean;
@@ -93,21 +94,33 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
         setIsSubmitting(true);
 
         try {
+            // 💡 FIX NOME STRUTTURA: Cerchiamo il nome e logo reale dal Database
+            let sName = 'Struttura Non Specificata';
+            let sLogo = '';
+            try {
+                const fac = await databaseService.getFacility(structureId);
+                if (fac) { 
+                    sName = fac.name; 
+                    sLogo = fac.logo || ''; 
+                } else {
+                    const prof = await databaseService.getProfile(structureId) as StructureProfile;
+                    if ('structureName' in prof) {
+                        sName = prof.structureName || 'Struttura Non Specificata';
+                        sLogo = prof.logo || '';
+                    }
+                }
+            } catch(e) { console.error("Errore recupero nome struttura", e); }
+
             const expiryDate = new Date();
             expiryDate.setDate(expiryDate.getDate() + parseInt(formData.expiryDays));
 
-            const requirements = formData.requirements
-                .split('\n')
-                .map(r => r.trim())
-                .filter(r => r.length > 0);
-
-            const qualifications = formData.qualifications
-                .split('\n')
-                .map(q => q.trim())
-                .filter(q => q.length > 0);
+            const reqsArray = formData.requirements.split('\n').map(r => r.trim()).filter(r => r.length > 0);
+            const qualsArray = formData.qualifications.split('\n').map(q => q.trim()).filter(q => q.length > 0);
 
             await databaseService.createJob({
                 structureId: structureId,
+                structureName: sName, // 💡 Inserito!
+                facilityLogo: sLogo,  // 💡 Inserito!
                 title: formData.title.trim(),
                 description: formData.description.trim(),
                 role: formData.role,
@@ -116,6 +129,9 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                 province: formData.province.trim().toUpperCase(),
                 salaryMin: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
                 salaryMax: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
+                workingHours: formData.workingHours.trim(),
+                requirements: reqsArray,
+                qualificationsRequired: qualsArray,
                 isActive: true,
             });
 
@@ -145,7 +161,6 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                 className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col overflow-hidden transform transition-all"
                 onClick={e => e.stopPropagation()}
             >
-                {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-blue-700 bg-gradient-to-r from-blue-600 to-blue-800 flex-shrink-0">
                     <h2 className="text-xl font-extrabold text-white flex items-center gap-3">
                         <div className="bg-white/20 p-1.5 rounded-lg">
@@ -155,17 +170,15 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                     </h2>
                     <button 
                         onClick={handleSafeClose}
-                        className="text-blue-100 hover:text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+                        className="text-blue-100 hover:text-white hover:bg-white/20 rounded-full p-2 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white"
                         aria-label="Chiudi modale"
                     >
                         <Icon type="x" className="w-6 h-6" />
                     </button>
                 </div>
 
-                {/* Form */}
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50">
                     <div className="p-6 space-y-6">
-                        {/* Titolo */}
                         <div>
                             <label htmlFor="job-title" className="block text-sm font-bold text-slate-700 mb-2">
                                 Titolo dell'annuncio <span className="text-red-500">*</span>
@@ -183,7 +196,6 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                             />
                         </div>
 
-                        {/* Ruolo e Contratto */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
                                 <label htmlFor="job-role" className="block text-sm font-bold text-slate-700 mb-2">
@@ -219,7 +231,6 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                             </div>
                         </div>
 
-                        {/* Località */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
                                 <label htmlFor="job-city" className="block text-sm font-bold text-slate-700 mb-2">
@@ -253,7 +264,6 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                             </div>
                         </div>
 
-                        {/* Descrizione */}
                         <div>
                             <label htmlFor="job-description" className="block text-sm font-bold text-slate-700 mb-2">
                                 Descrizione del lavoro <span className="text-red-500">*</span>
@@ -270,7 +280,6 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                             />
                         </div>
 
-                        {/* Stipendio e Orari */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                             <div>
                                 <label htmlFor="job-salaryMin" className="block text-sm font-bold text-slate-700 mb-2 truncate">
@@ -318,7 +327,6 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                             </div>
                         </div>
 
-                        {/* Requisiti e Qualifiche */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
                                 <label htmlFor="job-requirements" className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
@@ -352,7 +360,6 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                             </div>
                         </div>
 
-                        {/* Durata annuncio */}
                         <div className="bg-blue-50/50 p-4 border border-blue-100 rounded-xl">
                             <label htmlFor="job-expiry" className="block text-sm font-bold text-blue-900 mb-2">
                                 Scadenza annuncio
@@ -373,12 +380,11 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                         </div>
                     </div>
 
-                    {/* Footer */}
                     <div className="sticky bottom-0 flex items-center justify-end gap-3 p-5 border-t border-slate-200 bg-white z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                         <button
                             type="button"
                             onClick={handleSafeClose}
-                            className="px-6 py-2.5 border-2 border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                            className="px-6 py-2.5 border-2 border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                             disabled={isSubmitting}
                         >
                             Annulla
@@ -386,7 +392,7 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             {isSubmitting ? (
                                 <>

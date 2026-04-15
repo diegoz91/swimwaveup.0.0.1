@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { databaseService } from '@/services/database';
-import type { Post, UserProfile, StructureProfile, Media } from '@/types/types';
+import type { EnrichedPost, UserProfile, StructureProfile, Media } from '@/types/types';
 import { Icon } from '@/components/ui/Icon';
 import { LikesModal } from './LikesModal';
 
 interface PostCardProps {
-    post: Post;
-    onSelectPost?: (post: Post) => void;
+    post: EnrichedPost;
+    onSelectPost?: (post: EnrichedPost) => void;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({ post, onSelectPost }) => {
@@ -16,6 +16,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onSelectPost }) => {
     const navigate = useNavigate();
     const [likes, setLikes] = useState(post.likesCount || 0);
     const [isLiking, setIsLiking] = useState(false);
+    const [likeAnimation, setLikeAnimation] = useState(false);
     const [isLikesModalOpen, setIsLikesModalOpen] = useState(false);
     const [author, setAuthor] = useState<UserProfile | StructureProfile | null>(null);
 
@@ -28,17 +29,19 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onSelectPost }) => {
     }, [post.authorId]);
 
     const formattedDate = new Date(post.$createdAt).toLocaleDateString('it-IT', { 
-        day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' 
+        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
     });
 
     const handleLike = async () => {
         if (!user || isLiking) return;
         setIsLiking(true);
+        setLikeAnimation(true);
+        setTimeout(() => setLikeAnimation(false), 400); // Rimuove animazione "splash"
+        
         try {
             const isLikedNow = await databaseService.toggleLike(post.$id, user.$id);
             setLikes(prev => isLikedNow ? prev + 1 : Math.max(0, prev - 1));
         } catch (error) {
-            console.error('Errore durante il like:', error);
         } finally {
             setIsLiking(false);
         }
@@ -59,8 +62,44 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onSelectPost }) => {
     const authorAvatar = author ? (author.userType === 'professional' ? (author as UserProfile).avatar : (author as StructureProfile).logo) : '';
     const displayAvatar = authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName || 'U')}&background=eff6ff&color=1d4ed8`;
 
+    // 🏆 SMART BADGES
+    const getSwimBadges = () => {
+        if (!author || author.userType !== 'professional' || !(author as UserProfile).certificationsList) return [];
+        const str = JSON.stringify((author as UserProfile).certificationsList).toLowerCase();
+        const badges = [];
+        if (str.includes('fin') || str.includes('federazione')) badges.push({ id: 'fin', text: 'FIN', style: 'bg-orange-100 text-orange-700 border-orange-200' });
+        if (str.includes('salvamento') || str.includes('sns') || str.includes('bagnanti')) badges.push({ id: 'salvamento', text: 'Salvamento', style: 'bg-red-100 text-red-700 border-red-200' });
+        return badges.slice(0, 2);
+    };
+
+    // 🎨 CATEGORIE VISIVE
+    const getCategoryStyles = (cat?: string) => {
+        switch(cat) {
+            case 'allenamento': return { icon: 'clock', text: 'Allenamento', style: 'bg-blue-50 text-blue-600 border-blue-200' };
+            case 'gara': return { icon: 'star', text: 'Gara & Risultati', style: 'bg-amber-50 text-amber-600 border-amber-200' };
+            case 'tecnica': return { icon: 'certificate', text: 'Tecnica & Formazione', style: 'bg-purple-50 text-purple-600 border-purple-200' };
+            case 'normative': return { icon: 'info', text: 'Normative & Sicurezza', style: 'bg-red-50 text-red-600 border-red-200' };
+            default: return null;
+        }
+    };
+    const catStyle = getCategoryStyles(post.category);
+
     return (
         <article className="bg-white rounded-2xl shadow-sm border border-slate-200 mb-4 overflow-hidden animate-in fade-in duration-300">
+            
+            {/* 🌊 EFFETTO ONDA: Banner Consigliato */}
+            {post.recommendedBy && (
+                <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center gap-2 text-xs font-bold text-slate-500">
+                    <Icon type="thumb-up" className="w-3.5 h-3.5 text-blue-500" />
+                    <span 
+                        className="cursor-pointer hover:text-blue-600 hover:underline transition-colors" 
+                        onClick={() => navigate(`/profile/${post.recommendedBy!.id}`)}
+                    >
+                        {post.recommendedBy.name}
+                    </span> ha consigliato questo post
+                </div>
+            )}
+
             <div className="p-4 sm:p-5">
                 <div className="flex items-center gap-3 mb-4">
                     <img 
@@ -69,17 +108,33 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onSelectPost }) => {
                         className="w-12 h-12 rounded-full object-cover border border-slate-100 cursor-pointer hover:opacity-80 transition-opacity" 
                         onClick={() => navigate(`/profile/${post.authorId}`)}
                     />
-                    <div>
-                        <h3 
-                            onClick={() => navigate(`/profile/${post.authorId}`)}
-                            className="font-bold text-slate-900 leading-tight hover:text-blue-600 cursor-pointer transition-colors"
-                        >
-                            {authorName}
-                        </h3>
-                        {authorSubtitle && <p className="text-xs text-slate-500 mt-0.5 font-medium">{authorSubtitle}</p>}
-                        <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
-                            <Icon type="globe" className="w-3 h-3" /> {formattedDate}
-                        </p>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h3 
+                                onClick={() => navigate(`/profile/${post.authorId}`)}
+                                className="font-bold text-slate-900 leading-tight hover:text-blue-600 cursor-pointer transition-colors truncate"
+                            >
+                                {authorName}
+                            </h3>
+                            {/* Badge Automatici Istruttore */}
+                            {getSwimBadges().map(b => (
+                                <span key={b.id} className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded border ${b.style}`}>{b.text}</span>
+                            ))}
+                        </div>
+                        {authorSubtitle && <p className="text-xs text-slate-500 mt-0.5 font-medium truncate">{authorSubtitle}</p>}
+                        <div className="flex items-center gap-2 mt-1">
+                            <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                <Icon type="globe" className="w-3 h-3" /> {formattedDate}
+                            </p>
+                            {catStyle && (
+                                <>
+                                    <span className="text-slate-300 text-[10px]">•</span>
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border flex items-center gap-1 ${catStyle.style}`}>
+                                        <Icon type={catStyle.icon as any} className="w-3 h-3" /> {catStyle.text}
+                                    </span>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -122,7 +177,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onSelectPost }) => {
                 <button 
                     onClick={handleLike}
                     disabled={isLiking}
-                    className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 hover:text-slate-900 rounded-lg transition-colors active:scale-95 disabled:opacity-50 outline-none"
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold hover:bg-slate-200 rounded-lg transition-all outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${likeAnimation ? 'scale-110 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}
                 >
                     <Icon type="thumb-up" className="w-5 h-5" /> Consiglia
                 </button>

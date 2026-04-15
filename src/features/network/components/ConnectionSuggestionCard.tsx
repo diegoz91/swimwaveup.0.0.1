@@ -6,12 +6,14 @@ interface ConnectionSuggestionCardProps {
     user: UserProfile | StructureProfile;
     onSelectProfile: (userId: string) => void;
     onConnect: (userId: string) => Promise<void>; 
+    isAlreadyConnected?: boolean;
 }
 
 export const ConnectionSuggestionCard: React.FC<ConnectionSuggestionCardProps> = ({ 
     user, 
     onSelectProfile, 
-    onConnect 
+    onConnect,
+    isAlreadyConnected = false 
 }) => {
     const [isDismissed, setIsDismissed] = useState(false);
     const [requestSent, setRequestSent] = useState(false);
@@ -112,7 +114,15 @@ export const ConnectionSuggestionCard: React.FC<ConnectionSuggestionCardProps> =
                 ))}
             </div>
             
-            {requestSent ? (
+            {isAlreadyConnected ? (
+                <button 
+                    disabled
+                    className="w-full bg-slate-100 text-slate-500 font-bold py-2 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed border border-slate-200 transition-all"
+                >
+                    <Icon type="users" className="w-4 h-4"/>
+                    <span>Collegato</span>
+                </button>
+            ) : requestSent ? (
                 <button 
                     disabled
                     className="w-full bg-green-50 text-green-700 font-semibold py-2 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed border border-green-100 transition-all"

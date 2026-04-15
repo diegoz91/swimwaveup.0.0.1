@@ -44,19 +44,27 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
       setIsLoading(true);
       setError(null);
       
-      const res = await databases.listDocuments<UserProfile | StructureProfile>(
-          APPWRITE_CONFIG.databaseId,
-          APPWRITE_CONFIG.collections.profiles,
-          [Query.notEqual('userId', currentUserId), Query.limit(50)]
-      );
-      
-      const initialConvs = res.documents.map(profile => ({
-          conversationId: [currentUserId, profile.userId || profile.$id].sort().join('_'),
-          participant: profile,
-          lastMessage: { content: 'Clicca per chattare...', sentAt: '', senderId: '' },
-          unreadCount: 0,
-          isParticipantTyping: false
-      }));
+      // 💡 Recupera i collegamenti AGGIORNATI dal DB
+      const currentUserProfile = await databaseService.getProfile(currentUserId);
+      const safeConnections = (currentUserProfile.connections || []).slice(0, 100);
+
+      let initialConvs: Conversation[] = [];
+
+      if (safeConnections.length > 0) {
+          const res = await databases.listDocuments<UserProfile | StructureProfile>(
+              APPWRITE_CONFIG.databaseId,
+              APPWRITE_CONFIG.collections.profiles,
+              [Query.equal('$id', safeConnections), Query.limit(100)]
+          );
+          
+          initialConvs = res.documents.map(profile => ({
+              conversationId: [currentUserId, profile.userId || profile.$id].sort().join('_'),
+              participant: profile,
+              lastMessage: { content: 'Clicca per chattare...', sentAt: '', senderId: '' },
+              unreadCount: 0,
+              isParticipantTyping: false
+          }));
+      }
       
       const unreadRes = await databases.listDocuments<Message>(
         APPWRITE_CONFIG.databaseId,
@@ -64,6 +72,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
         [Query.equal('receiverId', currentUserId), Query.equal('isRead', false)]
       );
 
+      // Elimina silenziosamente i messaggi non letti provenienti da utenti non collegati (Anti-Spam)
       unreadRes.documents.forEach(msg => {
           const conv = initialConvs.find(c => c.conversationId === msg.conversationId);
           if (conv) {
@@ -208,9 +217,9 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
             </div>
           ) : conversations.length === 0 && !newChatParticipant ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center text-slate-400">
-              <Icon type="chat-bubble" className="w-12 h-12 text-slate-300 mb-4" />
-              <p className="font-bold text-slate-600">Nessuna conversazione.</p>
-              <p className="text-sm mt-2">Visita il profilo di un collega per inviare il primo messaggio!</p>
+              <Icon type="users" className="w-12 h-12 text-slate-300 mb-4" />
+              <p className="font-bold text-slate-600">Nessun collegamento</p>
+              <p className="text-sm mt-2">Visita il profilo di un collega ed espandi il tuo network per iniziare a chattare!</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-100">

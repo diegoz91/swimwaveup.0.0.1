@@ -2,12 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/context/ToastContext';
-import { Icon } from '@/components/ui/Icon';
-
-type UserType = 'professional' | 'structure';
 
 export const RegisterForm: React.FC = () => {
-    const [userType, setUserType] = useState<UserType>('professional');
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -25,11 +21,17 @@ export const RegisterForm: React.FC = () => {
         }
 
         try {
-            await register(email, password, name, userType);
-            showToast('Account creato con successo! Benvenuto in SwimIn.', 'success');
+            // 💡 TUTTI gli utenti si iscrivono come esseri umani ("professional").
+            // Le pagine struttura verranno create successivamente dall'interno del profilo.
+            await register(email, password, name, 'professional');
+            showToast('Account creato con successo! Benvenuto in SwimIn 🌊', 'success');
             navigate('/profile'); 
         } catch (err: any) {
-            showToast(err.message || 'Errore durante la registrazione. Riprova.', 'error');
+            if (err.code === 409 || (err.message && err.message.toLowerCase().includes('already exists'))) {
+                showToast('Questa email è già registrata! Vai alla pagina di Login per accedere.', 'error');
+            } else {
+                showToast(err.message || 'Errore durante la registrazione. Controlla i dati e riprova.', 'error');
+            }
         }
     };
 
@@ -40,27 +42,10 @@ export const RegisterForm: React.FC = () => {
                 <p className="text-slate-500 mt-2">Crea il tuo profilo e fai rete nel mondo del nuoto.</p>
             </div>
 
-            <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
-                <button
-                    type="button"
-                    onClick={() => setUserType('professional')}
-                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${userType === 'professional' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    Professionista
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setUserType('structure')}
-                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${userType === 'structure' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    Impianto Sportivo
-                </button>
-            </div>
-
             <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1.5" htmlFor="name">
-                        {userType === 'professional' ? 'Nome e Cognome' : 'Nome Struttura / Società'}
+                        Nome e Cognome
                     </label>
                     <input
                         id="name"
@@ -68,7 +53,7 @@ export const RegisterForm: React.FC = () => {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none bg-slate-50 focus:bg-white"
-                        placeholder={userType === 'professional' ? "Mario Rossi" : "Piscina Comunale..."}
+                        placeholder="Es. Mario Rossi"
                         disabled={isLoading}
                         required
                     />
@@ -106,9 +91,16 @@ export const RegisterForm: React.FC = () => {
                 <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md flex justify-center items-center disabled:opacity-70 mt-2 active:scale-95"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md flex justify-center items-center gap-2 disabled:opacity-70 mt-2 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 >
-                    {isLoading ? <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" /> : 'Crea Account'}
+                    {isLoading ? (
+                        <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> 
+                            <span>Creazione in corso...</span>
+                        </>
+                    ) : (
+                        'Crea Account'
+                    )}
                 </button>
             </form>
 

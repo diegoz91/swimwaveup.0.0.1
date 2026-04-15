@@ -1,9 +1,19 @@
-import React, { useMemo } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { databaseService } from '@/services/database';
+import { client } from '@/services/appwrite';
+import { APPWRITE_CONFIG } from '@/config/constants';
+import { Icon } from '@/components/ui/Icon';
+import type { AppNotification } from '@/types/types';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const displayAvatar = useMemo(() => {
     if (!user) return '';
@@ -13,10 +23,74 @@ const Header: React.FC = () => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=eff6ff&color=1d4ed8&bold=true&size=128`;
   }, [user]);
 
+  // 🛡️ SISTEMA NOTIFICHE BLINDATO ANTI-CRASH
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    
+    const currentUserId = user?.$id;
+    if (!currentUserId) return;
+
+    const setupNotifications = async () => {
+        try {
+            if (typeof databaseService.getUnreadNotifications === 'function') {
+                const unread = await databaseService.getUnreadNotifications(currentUserId);
+                setNotifications(unread || []);
+            }
+
+            const notifCollection = (APPWRITE_CONFIG.collections as any).notifications;
+            if (notifCollection) {
+                const channel = `databases.${APPWRITE_CONFIG.databaseId}.collections.${notifCollection}.documents`;
+                unsubscribe = client.subscribe(channel, (response: any) => {
+                    const payload = response.payload as AppNotification;
+                    if (payload?.userId === currentUserId && !payload?.isRead) {
+                        setNotifications(prev => [payload, ...prev]);
+                    }
+                });
+            }
+        } catch (error) {
+            console.log("Sincronizzazione notifiche disabilitata o non pronta.");
+        }
+    };
+
+    setupNotifications();
+    
+    return () => { 
+        if (unsubscribe) unsubscribe(); 
+    };
+  }, [user?.$id]);
+
+  useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+          if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+              setIsDropdownOpen(false);
+          }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleNotificationClick = async (notif: AppNotification) => {
+      try {
+          if (typeof databaseService.markNotificationAsRead === 'function') {
+              await databaseService.markNotificationAsRead(notif.$id);
+          }
+          setNotifications(prev => prev.filter(n => n.$id !== notif.$id));
+      } catch (e) {
+          // Errore silenziato
+      }
+      
+      setIsDropdownOpen(false);
+      
+      if (notif.type === 'connection') navigate('/network');
+      else if (notif.type === 'hired') navigate(`/profile/${notif.relatedId}`);
+      else navigate('/jobs');
+  };
+
   return (
     <header className="fixed top-0 left-0 w-full bg-white/90 backdrop-blur-md shadow-sm border-b border-slate-200 z-50 h-16 transition-all duration-300">
       <div className="max-w-7xl mx-auto h-full px-4 sm:px-6 flex justify-between items-center">
         
+        {/* LOGO */}
         <Link to="/" className="flex items-center gap-2 sm:gap-3 transition-transform active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg group">
           <div className="bg-blue-600 text-white p-1.5 sm:p-2 rounded-xl shadow-lg shadow-blue-200 group-hover:rotate-6 transition-transform">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -28,6 +102,7 @@ const Header: React.FC = () => {
           </span>
         </Link>
 
+        {/* 💡 MENU NAVIGAZIONE CENTRALE (Ripristinato!) */}
         <nav className="hidden md:flex items-center gap-2 font-semibold text-sm">
           {[
             { to: '/', label: 'Feed' },
@@ -41,9 +116,57 @@ const Header: React.FC = () => {
           ))}
         </nav>
 
+        {/* MENU DESTRA (UTENTE LOGGATO O TASTO ACCEDI) */}
         <div className="flex items-center">
           {user ? (
             <div className="flex items-center gap-2 sm:gap-4 md:pl-6 md:border-l border-slate-200">
+              
+              {/* 🔔 CENTRO NOTIFICHE */}
+              <div className="relative" ref={dropdownRef}>
+                  <button 
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="relative p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
+                      <Icon type="bell" className="w-6 h-6" />
+                      
+                      {notifications.length > 0 && (
+                          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
+                      )}
+                  </button>
+
+                  {isDropdownOpen && (
+                      <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in slide-in-from-top-2">
+                          <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                              <h3 className="font-bold text-slate-800">Notifiche</h3>
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{notifications.length} nuove</span>
+                          </div>
+                          <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+                              {notifications.length === 0 ? (
+                                  <div className="p-6 text-center text-slate-400">
+                                      <Icon type="bell" className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                      <p className="text-sm font-medium">Nessuna nuova notifica</p>
+                                  </div>
+                              ) : (
+                                  <div className="divide-y divide-slate-50">
+                                      {notifications.map(n => (
+                                          <div key={n.$id} onClick={() => handleNotificationClick(n)} className="p-4 hover:bg-slate-50 cursor-pointer transition-colors flex gap-3 group">
+                                              <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${n.type === 'hired' ? 'bg-green-100 text-green-600' : n.type === 'rejected' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                  <Icon type={n.type === 'hired' ? 'sparkles' : n.type === 'rejected' ? 'x' : 'users'} className="w-4 h-4" />
+                                              </div>
+                                              <div>
+                                                  <p className="text-sm text-slate-800 font-medium group-hover:text-blue-600 transition-colors line-clamp-2">{n.content}</p>
+                                                  <p className="text-[10px] text-slate-400 mt-1 font-bold uppercase tracking-wider">{new Date(n.$createdAt).toLocaleDateString('it-IT')}</p>
+                                              </div>
+                                          </div>
+                                      ))}
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+                  )}
+              </div>
+
+              {/* TASTO PROFILO RAPIDO E AVATAR */}
               <Link to="/profile" className="flex items-center gap-2 hover:bg-slate-50 p-1 pr-2 sm:pr-4 rounded-full transition-all border border-transparent hover:border-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 group">
                 <div className="relative">
                   <img src={displayAvatar} alt="Profilo" className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border-2 border-white shadow-sm ring-1 ring-slate-100 group-hover:ring-blue-400 transition-all" />
@@ -55,6 +178,7 @@ const Header: React.FC = () => {
                 </div>
               </Link>
               
+              {/* TASTO LOGOUT */}
               <button onClick={logout} className="text-slate-400 hover:text-red-600 p-2 rounded-xl hover:bg-red-50 transition-all outline-none focus-visible:ring-2 focus-visible:ring-red-500 active:scale-90" title="Esci da SwimIn">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -62,6 +186,7 @@ const Header: React.FC = () => {
               </button>
             </div>
           ) : (
+            // FALLBACK: UTENTE NON LOGGATO
             <div className="flex gap-2 pl-4">
               <Link to="/login" className="bg-blue-600 text-white font-bold px-6 py-2.5 rounded-full hover:bg-blue-700 transition-all active:scale-95 text-sm">
                 Accedi a SwimIn
@@ -69,6 +194,7 @@ const Header: React.FC = () => {
             </div>
           )}
         </div>
+
       </div>
     </header>
   );

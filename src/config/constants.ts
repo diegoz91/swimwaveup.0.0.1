@@ -18,6 +18,10 @@ export interface AppwriteConfig {
         applications: string;
         connections: string;
         messages: string;
+        announcements?: string;
+        shifts?: string;
+        facilities?: string;
+        notifications?: string;
     };
     buckets: {
         avatars: string;
@@ -38,6 +42,10 @@ export const APPWRITE_CONFIG: AppwriteConfig = {
         applications: 'applications',
         connections: 'connections',
         messages: 'messages',
+        announcements: 'announcements', 
+        shifts: 'shifts',
+        facilities: 'facilities',
+        notifications: 'notifications'
     },
     buckets: {
         avatars: 'avatars',
@@ -49,10 +57,5 @@ export const APP_CONFIG = {
     name: 'SwimIn',
     fullName: 'SwimWaveUP - SwimIn',
     version: '1.0.0',
-    limits: {
-        maxImageSizeMB: 5,
-        maxVideoSizeMB: 50,
-        maxDocumentSizeMB: 10,
-        feedPaginationLimit: 20,
-    }
-} as const;
+    environment: import.meta.env.MODE,
+};

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Query } from 'appwrite';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocation } from 'react-router-dom';
 import { databases } from '@/services/appwrite';
 import { databaseService } from '@/services/database';
 import { APPWRITE_CONFIG } from '@/config/constants';
 import { useToast } from '@/context/ToastContext';
-import type { Job, Application } from '@/types/types';
+import type { Job, Application, UserProfile } from '@/types/types';
 
 import { LavoroView } from '@/features/jobs/components/LavoroView';
 import { JobDetailView } from '@/features/jobs/components/JobDetailView';
@@ -15,6 +16,7 @@ import { ApplicationFlowModal, type ApplicationFlowState, type CustomApplication
 const Jobs: React.FC = () => {
     const { user } = useAuth();
     const { showToast } = useToast();
+    const location = useLocation();
     
     // Stati di Navigazione
     const [currentView, setCurrentView] = useState<'list' | 'detail' | 'myApplications'>('list');
@@ -55,6 +57,15 @@ const Jobs: React.FC = () => {
     useEffect(() => {
         fetchMyApplications();
     }, [fetchMyApplications]);
+
+    // 💡 INTERCETTAZIONE REDIRECT DA PROFILO AZIENDALE
+    useEffect(() => {
+        if (location.state && location.state.selectedJobId) {
+            handleSelectJob(location.state.selectedJobId);
+            // Pulisce la history per evitare re-aperture al refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
 
     const handleSelectJob = async (jobId: string) => {
         try {
@@ -119,6 +130,14 @@ const Jobs: React.FC = () => {
 
     if (!user) return null;
 
+    // 💡 CALCOLO RUOLI E STATI PER JOB DETAIL
+    let isAdmin = false;
+    if (selectedJob) {
+        isAdmin = user.$id === selectedJob.structureId || 
+                 (user.userType === 'professional' && ((user as UserProfile).managedFacilities || []).includes(selectedJob.structureId));
+    }
+    const hasApplied = selectedJob ? myApplications.some(app => app.jobId === selectedJob.$id) : false;
+
     return (
         <div className="pt-20 md:pt-24 px-4 w-full h-full relative">
             
@@ -135,6 +154,8 @@ const Jobs: React.FC = () => {
                     job={selectedJob}
                     onBack={() => setCurrentView('list')}
                     onApply={handleStartApplication}
+                    isAdmin={isAdmin}          // 💡 Passiamo i poteri
+                    hasApplied={hasApplied}    // 💡 Passiamo lo stato
                 />
             )}
 

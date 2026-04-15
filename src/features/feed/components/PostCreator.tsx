@@ -24,7 +24,7 @@ export const PostCreator: React.FC<PostCreatorProps> = ({ onPostCreated }) => {
         setIsModalOpen(true);
     };
 
-    const handleCreatePost = async (content: string, media: Media[]) => {
+    const handleCreatePost = async (content: string, media: Media[], category: string) => {
         let finalContent = content.trim();
         if (media && media.length > 0) {
             finalContent += `\n\n[MEDIA]${JSON.stringify(media)}[/MEDIA]`;
@@ -35,6 +35,7 @@ export const PostCreator: React.FC<PostCreatorProps> = ({ onPostCreated }) => {
             authorType: user.userType,
             content: finalContent,
             postType: media.length > 0 ? 'image' : 'text',
+            category: category, // Salviamo la categoria!
             visibility: 'public',
             likesCount: 0,
             commentsCount: 0

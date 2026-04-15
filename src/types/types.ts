@@ -36,6 +36,8 @@ export interface BaseProfile extends AppwriteDocument {
   connections?: string[];
   typingTo?: string | null;
   readReceipts?: boolean;
+  isOnline?: boolean;
+  lastActive?: string;
 }
 
 export interface UserProfile extends BaseProfile {
@@ -46,6 +48,8 @@ export interface UserProfile extends BaseProfile {
   avatar?: string;
   experienceList?: string[];
   certificationsList?: string[];
+  availableForEmergencies?: boolean;
+  managedFacilities?: string[]; 
 }
 
 export interface StructureProfile extends BaseProfile {
@@ -66,9 +70,14 @@ export interface Post extends AppwriteDocument {
   content: string;
   postType: 'text' | 'image' | 'video' | 'link';
   media?: Media[];
+  category?: string;
   visibility: 'public' | 'connections_only';
   likesCount: number;
   commentsCount: number;
+}
+
+export interface EnrichedPost extends Post {
+    recommendedBy?: { id: string; name: string };
 }
 
 // ----------------------------------------------------
@@ -99,16 +108,23 @@ export interface Job extends AppwriteDocument {
   province?: string;
   salaryMin?: number;
   salaryMax?: number;
+  workingHours?: string;
   isActive: boolean;
   structureName?: string; 
   facilityLogo?: string;
   candidates?: string[];
+  requirements?: string[];
+  qualificationsRequired?: string[];
+  
+  isSOS?: boolean;
+  sosDate?: string;
+  sosShift?: string;
 }
 
 export interface Application extends AppwriteDocument {
   jobId: string;
   applicantId: string;
-  status: 'pending' | 'reviewed' | 'accepted' | 'rejected';
+  status: 'pending' | 'reviewed' | 'accepted' | 'rejected' | 'hired';
   coverLetter?: string;
 }
 
@@ -126,5 +142,52 @@ export interface Message extends AppwriteDocument {
   senderId: string;
   receiverId: string;
   content: string;
+  isRead: boolean;
+}
+
+// ----------------------------------------------------
+// 6. SWIM-SQUAD (GESTIONE TEAM)
+// ----------------------------------------------------
+export interface SquadAnnouncement extends AppwriteDocument {
+  structureId: string;
+  content: string;
+  isImportant: boolean;
+  readBy: string[];
+}
+
+export interface SquadShift extends AppwriteDocument {
+  structureId: string;
+  userId: string;
+  userName: string;
+  date: string;
+  shiftTime: string;
+  role: string;
+  status: 'scheduled' | 'completed' | 'sos';
+}
+
+// ----------------------------------------------------
+// 7. FACILITIES (PAGINE AZIENDALI - MODELLO LINKEDIN)
+// ----------------------------------------------------
+export interface Facility extends AppwriteDocument {
+  name: string;
+  type?: string;
+  city: string;
+  province?: string;
+  bio?: string;
+  logo?: string;
+  cover?: string;
+  admins: string[];     
+  staff: string[];      
+  followers: string[];  
+}
+
+// ----------------------------------------------------
+// 8. NOTIFICATIONS (CENTRO NOTIFICHE)
+// ----------------------------------------------------
+export interface AppNotification extends AppwriteDocument {
+  userId: string;
+  type: 'connection' | 'hired' | 'rejected' | 'general';
+  content: string;
+  relatedId?: string; // ID Struttura o Utente
   isRead: boolean;
 }

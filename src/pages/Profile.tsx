@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { databaseService } from '@/services/database';
 import { useToast } from '@/context/ToastContext';
 import { ProfileView } from '@/features/profile/components/ProfileView';
 import { FacilityView } from '@/features/profile/components/FacilityView';
 import { Settings } from '@/features/profile/components/Settings';
-import type { UserProfile, StructureProfile, Job } from '@/types/types';
+import type { UserProfile, StructureProfile, Job, Facility } from '@/types/types';
 
-type ProfileType = UserProfile | StructureProfile;
+// Uniamo i tre mondi: Professionista, Vecchia Struttura e Nuova Pagina Aziendale (Facility)
+type ProfileType = UserProfile | StructureProfile | Facility;
 
 const ProfilePage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const { user: currentUser, logout } = useAuth();
     const { showToast } = useToast();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [viewedProfile, setViewedProfile] = useState<ProfileType | null>(null);
     const [openJobs, setOpenJobs] = useState<Job[]>([]);
@@ -32,20 +34,37 @@ const ProfilePage: React.FC = () => {
                 if (isOwnProfile && currentUser) {
                     targetProfile = currentUser;
                 } else if (id) {
-                    targetProfile = await databaseService.getProfile(id);
+                    try {
+                        // 1. Prova a cercare nei profili normali
+                        targetProfile = await databaseService.getProfile(id);
+                    } catch (error) {
+                        try {
+                            // 2. Se non lo trova, cerca nelle Pagine Aziendali (Facilities)
+                            const fac = await databaseService.getFacility(id);
+                            if (fac) targetProfile = fac;
+                        } catch (e) {
+                            // Nessun profilo trovato
+                        }
+                    }
                 }
 
                 if (targetProfile) {
                     setViewedProfile(targetProfile);
                     
-                    if (targetProfile.userType === 'structure') {
+                    const isLegacyStructure = 'userType' in targetProfile && targetProfile.userType === 'structure';
+                    const isFacility = !('userType' in targetProfile);
+                    
+                    if (isLegacyStructure || isFacility) {
                         const allJobs = await databaseService.getActiveJobs();
-                        const structureId = targetProfile.userId || targetProfile.$id;
+                        const structureId = ('userId' in targetProfile && targetProfile.userId) ? targetProfile.userId : targetProfile.$id;
                         setOpenJobs(allJobs.filter(job => job.structureId === structureId));
                     }
+                } else {
+                    showToast('Profilo non trovato.', 'error');
+                    navigate('/');
                 }
             } catch (error) {
-                showToast('Impossibile caricare il profilo.', 'error');
+                showToast('Impossibile caricare la pagina.', 'error');
                 navigate('/');
             } finally {
                 setIsLoading(false);
@@ -71,13 +90,13 @@ const ProfilePage: React.FC = () => {
 
     const handleProfileUpdate = (updatedProfile: ProfileType) => {
         setViewedProfile(updatedProfile);
-        showToast('Profilo aggiornato con successo!', 'success');
+        showToast('Informazioni aggiornate con successo!', 'success');
     };
 
     return (
         <div className="pt-20 md:pt-24 px-4 w-full h-full relative">
             
-            {/* Navigazione per Profilo */}
+            {/* Navigazione Impostazioni Personali */}
             {isOwnProfile && (
                 <div className="max-w-4xl mx-auto mb-6 flex justify-center sm:justify-start">
                     <div className="bg-slate-200/50 p-1.5 rounded-full flex gap-1">
@@ -97,9 +116,9 @@ const ProfilePage: React.FC = () => {
                 </div>
             )}
 
-            {/* Rendering della Vista */}
+            {/* Rendering Dinamico della Vista */}
             {activeTab === 'profile' ? (
-                viewedProfile.userType === 'professional' ? (
+                ('userType' in viewedProfile && viewedProfile.userType === 'professional') ? (
                     <ProfileView 
                         user={viewedProfile as UserProfile} 
                         onBack={() => navigate(-1)} 
@@ -109,16 +128,18 @@ const ProfilePage: React.FC = () => {
                     />
                 ) : (
                     <FacilityView
-                        facility={viewedProfile as StructureProfile}
+                        facility={viewedProfile as (StructureProfile | Facility)}
                         openJobs={openJobs}
                         onBack={() => navigate(-1)}
-                        onSelectJob={(jobId) => navigate(`/jobs/${jobId}`)}
+                        // 💡 FIX REDIRECT: Intercetta il click sull'annuncio e passa lo State Router a /jobs!
+                        onSelectJob={(jobId) => navigate(`/jobs`, { state: { selectedJobId: jobId } })}
+                        onUpdateProfile={handleProfileUpdate}
                     />
                 )
             ) : (
                 <Settings 
                     currentUser={currentUser}
-                    onNavigate={(view) => setActiveTab('profile')}
+                    onNavigate={() => setActiveTab('profile')}
                     onLogout={logout}
                 />
             )}

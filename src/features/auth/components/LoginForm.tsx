@@ -114,19 +114,27 @@ export const LoginForm: React.FC = () => {
                             />
                         </div>
 
+                        {/* 🌟 COREOGRAFIA BOTTONE LOGIN */}
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md flex justify-center items-center disabled:opacity-70 active:scale-95"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md flex justify-center items-center gap-2 disabled:opacity-70 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                         >
-                            {isLoading ? <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" /> : 'Accedi'}
+                            {isLoading ? (
+                                <>
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <span>Accesso in corso...</span>
+                                </>
+                            ) : (
+                                'Accedi'
+                            )}
                         </button>
                     </form>
 
                     <div className="mt-8 text-center border-t border-slate-100 pt-6">
                         <p className="text-slate-600">
                             Non hai ancora un account?{' '}
-                            <Link to="/register" className="text-blue-600 font-bold hover:text-blue-800 transition-colors">
+                            <Link to="/register" className="text-blue-600 font-bold hover:text-blue-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-200 rounded">
                                 Iscriviti ora
                             </Link>
                         </p>
@@ -137,7 +145,7 @@ export const LoginForm: React.FC = () => {
                     <div className="mb-6">
                         <button 
                             onClick={() => setShowRecovery(false)}
-                            className="flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors mb-4"
+                            className="flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors mb-4 outline-none focus-visible:ring-2 focus-visible:ring-slate-300 rounded pr-2"
                         >
                             <Icon type="arrow-left" className="w-4 h-4 mr-1" />
                             Torna al Login
@@ -161,12 +169,20 @@ export const LoginForm: React.FC = () => {
                             />
                         </div>
 
+                        {/* 🌟 COREOGRAFIA BOTTONE RECOVERY */}
                         <button
                             type="submit"
                             disabled={isRecovering}
-                            className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md flex justify-center items-center disabled:opacity-70 active:scale-95"
+                            className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md flex justify-center items-center gap-2 disabled:opacity-70 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
                         >
-                            {isRecovering ? <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" /> : 'Invia Link'}
+                            {isRecovering ? (
+                                <>
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <span>Invio in corso...</span>
+                                </>
+                            ) : (
+                                'Invia Link'
+                            )}
                         </button>
                     </form>
                 </div>

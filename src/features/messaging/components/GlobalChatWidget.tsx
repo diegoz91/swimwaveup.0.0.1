@@ -30,22 +30,46 @@ export const GlobalChatWidget: React.FC = () => {
 
   const isHidden = !authenticated || location.pathname.startsWith('/messages');
 
+  // HEARTBEAT DI PRESENZA
+  useEffect(() => {
+    if (!user?.$id) return;
+    
+    databaseService.updatePresence(user.$id, true);
+
+    const handleBeforeUnload = () => {
+        databaseService.updatePresence(user.$id, false);
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        databaseService.updatePresence(user.$id, false);
+    };
+  }, [user?.$id]);
+
   const loadConversations = useCallback(async () => {
     if (!user?.$id) return;
     try {
       setIsLoading(true);
-      const res = await databases.listDocuments<UserProfile | StructureProfile>(
-          APPWRITE_CONFIG.databaseId, APPWRITE_CONFIG.collections.profiles,
-          [Query.notEqual('userId', user.$id), Query.limit(30)]
-      );
       
-      const initialConvs = res.documents.map(profile => ({
-          conversationId: [user.$id, profile.userId || profile.$id].sort().join('_'),
-          participant: profile,
-          lastMessage: { content: 'Clicca per chattare...', sentAt: '', senderId: '' },
-          unreadCount: 0,
-          isParticipantTyping: false
-      }));
+      // 💡 FILTRO DI RETE: Carichiamo solo i collegamenti reali dell'utente
+      const safeConnections = (user.connections || []).slice(0, 100);
+      let initialConvs: Conversation[] = [];
+
+      if (safeConnections.length > 0) {
+          const res = await databases.listDocuments<UserProfile | StructureProfile>(
+              APPWRITE_CONFIG.databaseId, APPWRITE_CONFIG.collections.profiles,
+              [Query.equal('$id', safeConnections), Query.limit(100)]
+          );
+          
+          initialConvs = res.documents.map(profile => ({
+              conversationId: [user.$id, profile.userId || profile.$id].sort().join('_'),
+              participant: profile,
+              lastMessage: { content: 'Clicca per chattare...', sentAt: '', senderId: '' },
+              unreadCount: 0,
+              isParticipantTyping: false
+          }));
+      }
       
       const unreadRes = await databases.listDocuments<Message>(
         APPWRITE_CONFIG.databaseId, APPWRITE_CONFIG.collections.messages,
@@ -66,13 +90,14 @@ export const GlobalChatWidget: React.FC = () => {
           if (b.unreadCount !== a.unreadCount) return b.unreadCount - a.unreadCount;
           return new Date(b.lastMessage.sentAt).getTime() - new Date(a.lastMessage.sentAt).getTime();
       });
+      
       setConversations(initialConvs);
     } catch (err) {
       console.error('Widget Error loading conversations:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.$id]);
+  }, [user]);
 
   useEffect(() => {
     if (!isHidden) loadConversations();
@@ -112,11 +137,18 @@ export const GlobalChatWidget: React.FC = () => {
     const channelProfiles = `databases.${APPWRITE_CONFIG.databaseId}.collections.${APPWRITE_CONFIG.collections.profiles}.documents`;
     const unsubscribeProfiles = client.subscribe(channelProfiles, (response: any) => {
         if (response.events.some((e: string) => e.includes('.update'))) {
-            const profileId = response.payload.userId || response.payload.$id;
-            const typingTarget = response.payload.typingTo;
+            const payload = response.payload as UserProfile | StructureProfile;
+            const profileId = payload.userId || payload.$id;
+            const typingTarget = payload.typingTo;
+            const isOnline = payload.isOnline;
+
             setConversations(prev => prev.map(conv => {
                 if ((conv.participant.userId || conv.participant.$id) === profileId) {
-                    return { ...conv, isParticipantTyping: typingTarget === user.$id };
+                    return { 
+                        ...conv, 
+                        isParticipantTyping: typingTarget === user.$id,
+                        participant: { ...conv.participant, isOnline } 
+                    };
                 }
                 return conv;
             }));
@@ -185,7 +217,7 @@ export const GlobalChatWidget: React.FC = () => {
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                  </div>
               ) : conversations.length === 0 ? (
-                 <div className="p-6 text-center text-slate-400 text-sm">Nessuna conversazione attiva.</div>
+                 <div className="p-6 text-center text-slate-400 text-sm">Non hai ancora collegamenti attivi.</div>
               ) : (
                  <div className="divide-y divide-slate-100">
                     {conversations.map(conv => (

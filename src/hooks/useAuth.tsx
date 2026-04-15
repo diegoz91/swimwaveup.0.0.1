@@ -83,6 +83,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     try {
       const newAccount = await account.create(ID.unique(), email, password, name);
+      
+      // Auto-Login immediato dopo la creazione
       await account.createEmailSession(email, password);
       
       await databaseService.initializeProfile(newAccount.$id, email, userType, name);

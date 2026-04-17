@@ -165,7 +165,6 @@ const schema = {
                 { key: 'followers', type: 'string', size: 36, required: false, array: true }
             ]
         },
-        // 🟢 NUOVA COLLEZIONE: NOTIFICHE
         {
             id: 'notifications', name: 'Notifications',
             attributes: [
@@ -174,6 +173,34 @@ const schema = {
                 { key: 'content', type: 'string', size: 255, required: true },
                 { key: 'relatedId', type: 'string', size: 36, required: false },
                 { key: 'isRead', type: 'boolean', required: false, default: false }
+            ]
+        },
+        {
+            id: 'live_rooms', name: 'Live Rooms',
+            attributes: [
+                { key: 'title', type: 'string', size: 255, required: true },
+                { key: 'description', type: 'string', size: 1000, required: false },
+                { key: 'hostId', type: 'string', size: 36, required: true },
+                { key: 'facilityId', type: 'string', size: 36, required: false },
+                { key: 'status', type: 'string', size: 50, required: true },
+                { key: 'speakers', type: 'string', size: 36, required: false, array: true },
+                { key: 'listeners', type: 'string', size: 36, required: false, array: true },
+                { key: 'startedAt', type: 'string', size: 100, required: true }
+            ]
+        },
+        {
+            id: 'swim_meets', name: 'Swim Meets',
+            attributes: [
+                { key: 'title', type: 'string', size: 255, required: true },
+                { key: 'description', type: 'string', size: 4000, required: true },
+                { key: 'date', type: 'string', size: 100, required: true },
+                { key: 'time', type: 'string', size: 100, required: true },
+                { key: 'city', type: 'string', size: 255, required: true },
+                { key: 'address', type: 'string', size: 500, required: false },
+                { key: 'creatorId', type: 'string', size: 36, required: true },
+                { key: 'participants', type: 'string', size: 36, required: false, array: true },
+                { key: 'maxParticipants', type: 'integer', required: false },
+                { key: 'status', type: 'string', size: 50, required: true }
             ]
         }
     ],

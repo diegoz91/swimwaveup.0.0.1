@@ -23,7 +23,6 @@ const Header: React.FC = () => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=eff6ff&color=1d4ed8&bold=true&size=128`;
   }, [user]);
 
-  // 🛡️ SISTEMA NOTIFICHE BLINDATO ANTI-CRASH
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     
@@ -76,7 +75,6 @@ const Header: React.FC = () => {
           }
           setNotifications(prev => prev.filter(n => n.$id !== notif.$id));
       } catch (e) {
-          // Errore silenziato
       }
       
       setIsDropdownOpen(false);
@@ -102,15 +100,32 @@ const Header: React.FC = () => {
           </span>
         </Link>
 
-        {/* 💡 MENU NAVIGAZIONE CENTRALE (Ripristinato!) */}
+        {/* MENU NAVIGAZIONE CENTRALE CON TASTO LIVE */}
         <nav className="hidden md:flex items-center gap-2 font-semibold text-sm">
           {[
             { to: '/', label: 'Feed' },
             { to: '/jobs', label: 'Bacheca Lavoro' },
             { to: '/network', label: 'Il mio Network' },
-            { to: '/messages', label: 'Messaggi' }
+            { to: '/messages', label: 'Messaggi' },
+            { to: '/live', label: 'Live', isLive: true }
           ].map((item) => (
-            <NavLink key={item.to} to={item.to} className={({ isActive }) => `px-4 py-2 rounded-lg transition-all duration-200 ${isActive ? 'text-blue-600 bg-blue-50 shadow-inner' : 'text-slate-600 hover:text-blue-600 hover:bg-slate-50'}`}>
+            <NavLink 
+              key={item.to} 
+              to={item.to} 
+              className={({ isActive }) => `
+                px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2
+                ${item.isLive 
+                    ? (isActive ? 'text-red-700 bg-red-50 shadow-inner' : 'text-red-600 hover:text-red-700 hover:bg-red-50')
+                    : (isActive ? 'text-blue-600 bg-blue-50 shadow-inner' : 'text-slate-600 hover:text-blue-600 hover:bg-slate-50')
+                }
+              `}
+            >
+              {item.isLive && (
+                  <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                  </span>
+              )}
               {item.label}
             </NavLink>
           ))}
@@ -121,7 +136,7 @@ const Header: React.FC = () => {
           {user ? (
             <div className="flex items-center gap-2 sm:gap-4 md:pl-6 md:border-l border-slate-200">
               
-              {/* 🔔 CENTRO NOTIFICHE */}
+              {/* NOTIFICHE */}
               <div className="relative" ref={dropdownRef}>
                   <button 
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}

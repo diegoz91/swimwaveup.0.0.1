@@ -21,8 +21,6 @@ export const RegisterForm: React.FC = () => {
         }
 
         try {
-            // 💡 TUTTI gli utenti si iscrivono come esseri umani ("professional").
-            // Le pagine struttura verranno create successivamente dall'interno del profilo.
             await register(email, password, name, 'professional');
             showToast('Account creato con successo! Benvenuto in SwimIn 🌊', 'success');
             navigate('/profile'); 

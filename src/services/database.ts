@@ -15,22 +15,25 @@ import type {
     SquadAnnouncement,
     SquadShift,
     Facility,
-    AppNotification
+    AppNotification,
+    LiveRoom,
+    SwimMeet // 🟢 IMPORTATO NUOVO TIPO SWIM MEET
 } from '@/types/types';
 
 const { databaseId, collections } = APPWRITE_CONFIG;
 
-// 💡 FIX TYPESCRIPT: Impostiamo i fallback per evitare errori "string | undefined" su Vercel
 const ANNOUNCEMENTS_COLLECTION = (collections as any).announcements || 'announcements_mock_id';
 const SHIFTS_COLLECTION = (collections as any).shifts || 'shifts_mock_id';
 const FACILITIES_COLLECTION = (collections as any).facilities || 'facilities_mock_id';
 const NOTIFICATIONS_COLLECTION = (collections as any).notifications || 'notifications_mock_id';
+const LIVE_ROOMS_COLLECTION = (collections as any).live_rooms || 'live_rooms_mock_id';
+const SWIM_MEETS_COLLECTION = (collections as any).swim_meets || 'swim_meets_mock_id'; // 🟢 NUOVA COSTANTE
 
 type Profile = UserProfile | StructureProfile;
 
 export const databaseService = {
     // ==========================================
-    // PROFILI & PRESENZA (ECOSISTEMA VIVO)
+    // PROFILI & PRESENZA
     // ==========================================
     async initializeProfile(userId: string, email: string, userType: 'professional' | 'structure', name: string) {
         const profileData = userType === 'professional' 
@@ -66,7 +69,7 @@ export const databaseService = {
     },
 
     // ==========================================
-    // CHAT & MESSAGING REAL-TIME
+    // CHAT & MESSAGING
     // ==========================================
     async sendMessage(conversationId: string, senderId: string, receiverId: string, content: string) {
         return await databases.createDocument<Message>(databaseId, collections.messages, ID.unique(), { conversationId, senderId, receiverId, content, isRead: false });
@@ -93,7 +96,7 @@ export const databaseService = {
     },
 
     // ==========================================
-    // NOTIFICHE (CENTRO NOTIFICHE)
+    // NOTIFICHE
     // ==========================================
     async getUnreadNotifications(userId: string) {
         try {
@@ -117,7 +120,7 @@ export const databaseService = {
     },
 
     // ==========================================
-    // 🌊 FEED (EFFETTO ONDA) E POSTS
+    // 🌊 FEED E POSTS
     // ==========================================
     async createPost(postData: Partial<Post>) {
         return await databases.createDocument<Post>(databaseId, collections.posts, ID.unique(), postData);
@@ -263,7 +266,6 @@ export const databaseService = {
     async updateApplicationStatus(applicationId: string, status: 'pending' | 'reviewed' | 'accepted' | 'rejected' | 'hired') {
         try { 
             const updated = await databases.updateDocument<Application>(databaseId, collections.applications, applicationId, { status }); 
-            // 💡 Invia notifica se la candidatura viene scartata
             if (status === 'rejected') {
                 await databases.createDocument(databaseId, NOTIFICATIONS_COLLECTION, ID.unique(), {
                     userId: updated.applicantId, type: 'rejected', content: `La tua candidatura è stata scartata.`, relatedId: updated.jobId, isRead: false
@@ -280,7 +282,6 @@ export const databaseService = {
     // ==========================================
     async sendConnectionRequest(senderId: string, receiverId: string) {
         const req = await databases.createDocument<Connection>(databaseId, collections.connections, ID.unique(), { senderId, receiverId, status: 'pending' });
-        // 💡 Invia notifica per richiesta collegamento
         await databases.createDocument(databaseId, NOTIFICATIONS_COLLECTION, ID.unique(), {
             userId: receiverId, type: 'connection', content: `Hai ricevuto una nuova richiesta di collegamento.`, relatedId: senderId, isRead: false
         }).catch(() => {});
@@ -395,12 +396,12 @@ export const databaseService = {
     },
 
     // ==========================================
-    // 🏊‍♂️ SWIM-SQUAD (TEAM MANAGEMENT)
+    // 🏊‍♂️ SWIM-SQUAD
     // ==========================================
     async createSquadAnnouncement(data: Partial<SquadAnnouncement>) {
         try {
             return await databases.createDocument<SquadAnnouncement>(databaseId, ANNOUNCEMENTS_COLLECTION, ID.unique(), data);
-        } catch(e) { console.error("🔥 Errore salvataggio Annuncio su DB:", e); return null; }
+        } catch(e) { return null; }
     },
     async getSquadAnnouncements(structureId: string) {
         try {
@@ -409,21 +410,18 @@ export const databaseService = {
                 Query.orderDesc('$createdAt')
             ]);
             return res.documents;
-        } catch(e) { console.error("🔥 Errore lettura Annunci:", e); return []; }
+        } catch(e) { return []; }
     },
     async deleteSquadAnnouncement(announcementId: string) {
         try {
             await databases.deleteDocument(databaseId, ANNOUNCEMENTS_COLLECTION, announcementId);
             return true;
-        } catch(e) { 
-            console.error("Errore eliminazione annuncio", e); 
-            return false; 
-        }
+        } catch(e) { return false; }
     },
     async createSquadShift(data: Partial<SquadShift>) {
         try {
             return await databases.createDocument<SquadShift>(databaseId, SHIFTS_COLLECTION, ID.unique(), data);
-        } catch(e) { console.error("🔥 Errore salvataggio Turno su DB:", e); return null; }
+        } catch(e) { return null; }
     },
     async getSquadShifts(structureId: string) {
         try {
@@ -432,16 +430,16 @@ export const databaseService = {
                 Query.orderAsc('date')
             ]);
             return res.documents;
-        } catch(e) { console.error("🔥 Errore lettura Turni:", e); return []; }
+        } catch(e) { return []; }
     },
     async deleteSquadShift(shiftId: string) {
         try {
             await databases.deleteDocument(databaseId, SHIFTS_COLLECTION, shiftId);
-        } catch(e) { console.error("Errore eliminazione turno", e); }
+        } catch(e) {}
     },
 
     // ==========================================
-    // 🏢 FACILITIES (PAGINE AZIENDALI E HR)
+    // 🏢 FACILITIES
     // ==========================================
     async createFacility(data: Partial<Facility>, adminId: string) {
         try {
@@ -458,23 +456,21 @@ export const databaseService = {
             await this.updateProfile(adminId, { managedFacilities: [...managed, facility.$id] });
             
             return facility;
-        } catch(e) { console.error("🔥 Errore salvataggio Pagina Struttura su DB:", e); return null; }
+        } catch(e) { return null; }
     },
     
     async getFacility(facilityId: string) {
         try {
             return await databases.getDocument<Facility>(databaseId, FACILITIES_COLLECTION, facilityId);
-        } catch(e) { console.error("🔥 Errore lettura Pagina Struttura:", e); return null; }
+        } catch(e) { return null; }
     },
     
     async updateFacility(facilityId: string, data: Partial<Facility>) {
         try {
             const cleanData = { ...data };
-            delete (cleanData as any).$id;
-            delete (cleanData as any).$createdAt;
-            delete (cleanData as any).$updatedAt;
+            delete (cleanData as any).$id; delete (cleanData as any).$createdAt; delete (cleanData as any).$updatedAt;
             return await databases.updateDocument<Facility>(databaseId, FACILITIES_COLLECTION, facilityId, cleanData);
-        } catch(e) { console.error("🔥 Errore aggiornamento Pagina Struttura:", e); return null; }
+        } catch(e) { return null; }
     },
     
     async getManagedFacilities(adminId: string) {
@@ -489,10 +485,9 @@ export const databaseService = {
                 Query.orderDesc('$createdAt')
             ]);
             return res.documents;
-        } catch(e) { console.error("🔥 Errore lettura Pagine Gestite:", e); return []; }
+        } catch(e) { return []; }
     },
 
-    // 💡 Toggle Followers Pagina Aziendale
     async toggleFollowFacility(facilityId: string, userId: string) {
         try {
             const fac = await databases.getDocument<Facility>(databaseId, FACILITIES_COLLECTION, facilityId);
@@ -505,21 +500,14 @@ export const databaseService = {
                 
             await databases.updateDocument(databaseId, FACILITIES_COLLECTION, facilityId, { followers: newFollowers });
             return !isFollowing; 
-        } catch(e) { 
-            return null; 
-        }
+        } catch(e) { return null; }
     },
 
-    // 💡 LA MAGIA DELL'HR: FUNZIONI ASSUNZIONE E LICENZIAMENTO
     async hireCandidate(applicationId: string, jobId: string, structureId: string, applicantId: string) {
         try {
-            // 1. Aggiorna lo stato Candidatura ad 'Assunto'
             await databases.updateDocument(databaseId, collections.applications, applicationId, { status: 'hired' });
-            
-            // 2. Chiude l'Annuncio di lavoro togliendolo dalla bacheca pubblica
             await databases.updateDocument(databaseId, collections.jobs, jobId, { isActive: false });
             
-            // 3. Aggiunge il dipendente allo Staff della Struttura (Sia nuova Facility che vecchia StructureProfile)
             let facilityName = 'Una Struttura';
             try {
                 const fac = await databases.getDocument<Facility>(databaseId, FACILITIES_COLLECTION, structureId);
@@ -537,39 +525,216 @@ export const databaseService = {
                 }
             }
 
-            // 💡 Invia Notifica Biglietto D'Oro al Candidato!
             await databases.createDocument(databaseId, NOTIFICATIONS_COLLECTION, ID.unique(), {
-                userId: applicantId, 
-                type: 'hired', 
-                content: `🎉 Congratulazioni! Sei stato assunto da ${facilityName}.`, 
-                relatedId: structureId, 
-                isRead: false
+                userId: applicantId, type: 'hired', content: `🎉 Congratulazioni! Sei stato assunto da ${facilityName}.`, relatedId: structureId, isRead: false
             }).catch(() => {});
 
             return true;
-        } catch (error) {
-            console.error('Error in hireCandidate:', error);
-            return false;
-        }
+        } catch (error) { return false; }
     },
 
     async removeStaffMember(structureId: string, staffId: string) {
         try {
             try {
-                // Rimuovi da Facility (Modello nuovo)
                 const fac = await databases.getDocument<Facility>(databaseId, FACILITIES_COLLECTION, structureId);
                 const staff = (fac.staff || []).filter(id => id !== staffId);
                 await databases.updateDocument(databaseId, FACILITIES_COLLECTION, structureId, { staff });
             } catch {
-                // Rimuovi da Legacy Structure (Modello vecchio)
                 const prof = await databases.getDocument<StructureProfile>(databaseId, collections.profiles, structureId);
                 const conns = (prof.connections || []).filter(id => id !== staffId);
                 await databases.updateDocument(databaseId, collections.profiles, structureId, { connections: conns });
             }
             return true;
-        } catch (error) {
-            console.error('Error in removeStaffMember:', error);
-            return false;
+        } catch (error) { return false; }
+    },
+
+    // ==========================================
+    // 🔴 BORDO VASCA LIVE
+    // ==========================================
+    async createLiveRoom(data: Partial<LiveRoom>) {
+        try {
+            return await databases.createDocument<LiveRoom>(
+                databaseId, 
+                LIVE_ROOMS_COLLECTION, 
+                ID.unique(), 
+                {
+                    ...data,
+                    status: 'active',
+                    speakers: data.speakers || [data.hostId],
+                    listeners: data.listeners || [],
+                    startedAt: new Date().toISOString()
+                }
+            );
+        } catch (e) {
+            console.error("🔥 Errore creazione Live Room:", e);
+            return null;
         }
+    },
+
+    async getActiveLiveRooms() {
+        try {
+            const res = await databases.listDocuments<LiveRoom>(
+                databaseId, 
+                LIVE_ROOMS_COLLECTION, 
+                [
+                    Query.equal('status', 'active'),
+                    Query.orderDesc('startedAt')
+                ]
+            );
+            return res.documents;
+        } catch (e) { return []; }
+    },
+
+    async getLiveRoom(roomId: string) {
+        try {
+            return await databases.getDocument<LiveRoom>(databaseId, LIVE_ROOMS_COLLECTION, roomId);
+        } catch (e) { return null; }
+    },
+
+    async joinLiveRoom(roomId: string, userId: string, role: 'speaker' | 'listener') {
+        try {
+            const room = await this.getLiveRoom(roomId);
+            if (!room || room.status !== 'active') return null;
+
+            const speakers = new Set(room.speakers || []);
+            const listeners = new Set(room.listeners || []);
+
+            speakers.delete(userId);
+            listeners.delete(userId);
+
+            if (role === 'speaker') {
+                speakers.add(userId);
+            } else {
+                listeners.add(userId);
+            }
+
+            return await databases.updateDocument<LiveRoom>(
+                databaseId, 
+                LIVE_ROOMS_COLLECTION, 
+                roomId, 
+                {
+                    speakers: Array.from(speakers),
+                    listeners: Array.from(listeners)
+                }
+            );
+        } catch (e) { return null; }
+    },
+
+    async leaveLiveRoom(roomId: string, userId: string) {
+        try {
+            const room = await this.getLiveRoom(roomId);
+            if (!room) return null;
+
+            const speakers = (room.speakers || []).filter(id => id !== userId);
+            const listeners = (room.listeners || []).filter(id => id !== userId);
+
+            return await databases.updateDocument<LiveRoom>(
+                databaseId, 
+                LIVE_ROOMS_COLLECTION, 
+                roomId, 
+                { speakers, listeners }
+            );
+        } catch (e) { return null; }
+    },
+
+    async endLiveRoom(roomId: string) {
+        try {
+            return await databases.updateDocument<LiveRoom>(
+                databaseId, 
+                LIVE_ROOMS_COLLECTION, 
+                roomId, 
+                { status: 'ended' }
+            );
+        } catch (e) { return null; }
+    },
+
+    // ==========================================
+    // 🟢 SWIM-MEETS
+    // ==========================================
+    async createSwimMeet(data: Partial<SwimMeet>) {
+        try {
+            return await databases.createDocument<SwimMeet>(
+                databaseId, 
+                SWIM_MEETS_COLLECTION, 
+                ID.unique(), 
+                {
+                    ...data,
+                    status: 'upcoming',
+                    participants: data.participants || [data.creatorId]
+                }
+            );
+        } catch (e) {
+            console.error("🔥 Errore creazione Swim-Meet:", e);
+            return null;
+        }
+    },
+
+    async getActiveSwimMeets() {
+        try {
+            const res = await databases.listDocuments<SwimMeet>(
+                databaseId, 
+                SWIM_MEETS_COLLECTION, 
+                [
+                    Query.equal('status', 'upcoming'),
+                    Query.orderAsc('date')
+                ]
+            );
+            return res.documents;
+        } catch (e) { return []; }
+    },
+
+    async getSwimMeet(meetId: string) {
+        try {
+            return await databases.getDocument<SwimMeet>(databaseId, SWIM_MEETS_COLLECTION, meetId);
+        } catch (e) { return null; }
+    },
+
+    async joinSwimMeet(meetId: string, userId: string) {
+        try {
+            const meet = await this.getSwimMeet(meetId);
+            if (!meet || meet.status !== 'upcoming') return null;
+
+            const participants = new Set(meet.participants || []);
+            
+            if (meet.maxParticipants && participants.size >= meet.maxParticipants && !participants.has(userId)) {
+                throw new Error("L'evento ha raggiunto il limite massimo di partecipanti.");
+            }
+
+            participants.add(userId);
+
+            return await databases.updateDocument<SwimMeet>(
+                databaseId, 
+                SWIM_MEETS_COLLECTION, 
+                meetId, 
+                { participants: Array.from(participants) }
+            );
+        } catch (e) { return null; }
+    },
+
+    async leaveSwimMeet(meetId: string, userId: string) {
+        try {
+            const meet = await this.getSwimMeet(meetId);
+            if (!meet) return null;
+
+            const participants = (meet.participants || []).filter(id => id !== userId);
+
+            return await databases.updateDocument<SwimMeet>(
+                databaseId, 
+                SWIM_MEETS_COLLECTION, 
+                meetId, 
+                { participants }
+            );
+        } catch (e) { return null; }
+    },
+
+    async cancelSwimMeet(meetId: string) {
+        try {
+            return await databases.updateDocument<SwimMeet>(
+                databaseId, 
+                SWIM_MEETS_COLLECTION, 
+                meetId, 
+                { status: 'cancelled' }
+            );
+        } catch (e) { return null; }
     }
 };

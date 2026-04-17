@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// Providers (Contesti Globali)
+// Providers
 import { ToastProvider } from '@/context/ToastContext';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 
@@ -21,6 +21,7 @@ import Jobs from '@/pages/Jobs';
 import Network from '@/pages/Network';
 import Profile from '@/pages/Profile';
 import Chat from '@/pages/Chat';
+import Live from '@/pages/Live';
 
 const AppContent: React.FC = () => {
   const { authenticated } = useAuth();
@@ -28,7 +29,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-200 selection:text-blue-900 flex flex-col relative">
       
-      {/* 🔒 1. HEADER VISIBILE SOLO SE LOGGATO */}
+      {/* VISIBILE SOLO SE LOGGATO */}
       {authenticated && <Header />}
       
       <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col ${authenticated ? 'pt-20 pb-20 md:pb-8' : 'py-10'}`}>
@@ -43,13 +44,16 @@ const AppContent: React.FC = () => {
           <Route path="/network" element={<ProtectedRoute><Network /></ProtectedRoute>} />
           <Route path="/profile/:id?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/messages" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+          
+          {/* Bordo Vasca Live */}
+          <Route path="/live" element={<ProtectedRoute><Live /></ProtectedRoute>} />
 
           {/* Rotta di Fallback */}
           <Route path="*" element={<Navigate to={authenticated ? "/" : "/login"} replace />} />
         </Routes>
       </main>
 
-      {/* 🔒 2. BOTTOM NAV E WIDGET CHAT VISIBILI SOLO SE LOGGATO */}
+      {/* VISIBILI SOLO SE LOGGATO */}
       {authenticated && <BottomNav />}
       {authenticated && <GlobalChatWidget />}
       

@@ -36,7 +36,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onSelectPost }) => {
         if (!user || isLiking) return;
         setIsLiking(true);
         setLikeAnimation(true);
-        setTimeout(() => setLikeAnimation(false), 400); // Rimuove animazione "splash"
+        setTimeout(() => setLikeAnimation(false), 400);
         
         try {
             const isLikedNow = await databaseService.toggleLike(post.$id, user.$id);
@@ -62,7 +62,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onSelectPost }) => {
     const authorAvatar = author ? (author.userType === 'professional' ? (author as UserProfile).avatar : (author as StructureProfile).logo) : '';
     const displayAvatar = authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName || 'U')}&background=eff6ff&color=1d4ed8`;
 
-    // 🏆 SMART BADGES
+    // SMART BADGES
     const getSwimBadges = () => {
         if (!author || author.userType !== 'professional' || !(author as UserProfile).certificationsList) return [];
         const str = JSON.stringify((author as UserProfile).certificationsList).toLowerCase();
@@ -72,7 +72,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onSelectPost }) => {
         return badges.slice(0, 2);
     };
 
-    // 🎨 CATEGORIE VISIVE
+    // CATEGORIE VISIVE
     const getCategoryStyles = (cat?: string) => {
         switch(cat) {
             case 'allenamento': return { icon: 'clock', text: 'Allenamento', style: 'bg-blue-50 text-blue-600 border-blue-200' };
@@ -84,10 +84,12 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onSelectPost }) => {
     };
     const catStyle = getCategoryStyles(post.category);
 
+    const isVideoAnalysis = post.postType === 'video-analysis' && extractedMedia.length > 0;
+
     return (
         <article className="bg-white rounded-2xl shadow-sm border border-slate-200 mb-4 overflow-hidden animate-in fade-in duration-300">
             
-            {/* 🌊 EFFETTO ONDA: Banner Consigliato */}
+            {/* Banner Consigliato */}
             {post.recommendedBy && (
                 <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center gap-2 text-xs font-bold text-slate-500">
                     <Icon type="thumb-up" className="w-3.5 h-3.5 text-blue-500" />
@@ -147,9 +149,19 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onSelectPost }) => {
 
                 {extractedMedia.length > 0 && (
                     <div 
-                        className={`grid gap-1 rounded-xl overflow-hidden cursor-pointer ${extractedMedia.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}
+                        className={`grid gap-1 rounded-xl overflow-hidden cursor-pointer relative ${extractedMedia.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}
                         onClick={() => onSelectPost && onSelectPost(post)}
                     >
+                        {/* VIDEO ANALISI */}
+                        {isVideoAnalysis && (
+                            <div className="absolute inset-0 bg-gradient-to-t from-purple-900/80 via-transparent to-transparent z-10 flex items-end p-4">
+                                <div className="bg-purple-600/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg border border-purple-400 shadow-lg flex items-center gap-2">
+                                    <Icon type="camera" className="w-5 h-5 animate-pulse" />
+                                    <span className="font-extrabold text-sm uppercase tracking-wider">Video-Analisi Tecnica</span>
+                                </div>
+                            </div>
+                        )}
+
                         {extractedMedia.map((m, idx) => (
                             <img key={idx} src={m.url} alt={m.alt || 'Media'} className="w-full h-auto max-h-[400px] object-cover border border-slate-100" loading="lazy" />
                         ))}
@@ -183,9 +195,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onSelectPost }) => {
                 </button>
                 <button 
                     onClick={() => onSelectPost && onSelectPost(post)}
-                    className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 hover:text-slate-900 rounded-lg transition-colors active:scale-95 outline-none"
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-lg transition-colors active:scale-95 outline-none ${isVideoAnalysis ? 'text-purple-600 hover:bg-purple-100' : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900'}`}
                 >
-                    <Icon type="chat-bubble" className="w-5 h-5" /> Commenta
+                    <Icon type="chat-bubble" className="w-5 h-5" /> 
+                    {isVideoAnalysis ? 'Analizza Video' : 'Commenta'}
                 </button>
             </div>
             

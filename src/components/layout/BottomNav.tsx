@@ -12,28 +12,42 @@ interface NavItemProps {
     icon: IconType;
     label: string;
     badgeCount?: number;
+    isLive?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ to, icon, label, badgeCount }) => (
+const NavItem: React.FC<NavItemProps> = ({ to, icon, label, badgeCount, isLive }) => (
     <NavLink
         to={to}
         aria-label={label}
         className={({ isActive }) => `
             flex flex-col items-center justify-center w-full min-h-[56px] py-1 transition-colors duration-200 outline-none
-            ${isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'}
+            ${isLive 
+                ? (isActive ? 'text-red-600' : 'text-slate-500 hover:text-red-600') 
+                : (isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800')
+            }
         `}
     >
         {({ isActive }) => (
             <>
                 <div className="relative mb-1">
                     <Icon type={icon} className={`w-6 h-6 transition-transform duration-200 ${isActive ? 'scale-110' : 'scale-100'}`} />
-                    {badgeCount !== undefined && badgeCount > 0 && (
+                    
+                    {/* Badge Messaggi Classico */}
+                    {badgeCount !== undefined && badgeCount > 0 && !isLive && (
                         <span className="absolute -top-1 -right-2 bg-red-600 text-white text-[10px] font-bold rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center border-2 border-white shadow-sm animate-in zoom-in duration-200">
                             {badgeCount > 99 ? '99+' : badgeCount}
                         </span>
                     )}
+
+                    {/* Badge "On Air" */}
+                    {isLive && (
+                        <span className="absolute -top-0.5 -right-1 flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
+                        </span>
+                    )}
                 </div>
-                <span className={`text-[10px] font-medium leading-none ${isActive ? 'font-bold' : ''}`}>
+                <span className={`text-[9px] sm:text-[10px] font-medium leading-none ${isActive ? 'font-bold' : ''}`}>
                     {label}
                 </span>
             </>
@@ -99,6 +113,9 @@ const BottomNav: React.FC = () => {
         >
             <NavItem to="/" icon="home" label="Home" />
             <NavItem to="/jobs" icon="briefcase" label="Lavoro" />
+            
+            <NavItem to="/live" icon="video" label="Live" isLive />
+            
             <NavItem to="/messages" icon="chat-bubble" label="Chat" badgeCount={unreadMessages} />
             <NavItem to="/network" icon="globe" label="Network" />
             <NavItem to="/profile" icon="user-circle" label="Profilo" />

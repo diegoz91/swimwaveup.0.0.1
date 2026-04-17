@@ -68,7 +68,7 @@ export interface Post extends AppwriteDocument {
   authorId: string;
   authorType: UserType;
   content: string;
-  postType: 'text' | 'image' | 'video' | 'link';
+  postType: 'text' | 'image' | 'video' | 'link' | 'video-analysis';
   media?: Media[];
   category?: string;
   visibility: 'public' | 'connections_only';
@@ -88,6 +88,7 @@ export interface Comment extends AppwriteDocument {
   authorId: string;
   content: string;
   parentCommentId?: string | null;
+  videoTimestamp?: number; 
 }
 
 export interface Like extends AppwriteDocument {
@@ -146,7 +147,7 @@ export interface Message extends AppwriteDocument {
 }
 
 // ----------------------------------------------------
-// 6. SWIM-SQUAD (GESTIONE TEAM)
+// 6. SWIM-SQUAD
 // ----------------------------------------------------
 export interface SquadAnnouncement extends AppwriteDocument {
   structureId: string;
@@ -166,7 +167,7 @@ export interface SquadShift extends AppwriteDocument {
 }
 
 // ----------------------------------------------------
-// 7. FACILITIES (PAGINE AZIENDALI - MODELLO LINKEDIN)
+// 7. FACILITIES
 // ----------------------------------------------------
 export interface Facility extends AppwriteDocument {
   name: string;
@@ -182,12 +183,42 @@ export interface Facility extends AppwriteDocument {
 }
 
 // ----------------------------------------------------
-// 8. NOTIFICATIONS (CENTRO NOTIFICHE)
+// 8. NOTIFICATIONS
 // ----------------------------------------------------
 export interface AppNotification extends AppwriteDocument {
   userId: string;
   type: 'connection' | 'hired' | 'rejected' | 'general';
   content: string;
-  relatedId?: string; // ID Struttura o Utente
+  relatedId?: string;
   isRead: boolean;
+}
+
+// ----------------------------------------------------
+// 9. LIVE ROOMS
+// ----------------------------------------------------
+export interface LiveRoom extends AppwriteDocument {
+  title: string;
+  description?: string;
+  hostId: string;
+  facilityId?: string;
+  status: 'active' | 'ended';
+  speakers: string[]; 
+  listeners: string[];
+  startedAt: string;
+}
+
+// ----------------------------------------------------
+// 10. SWIM-MEETS
+// ----------------------------------------------------
+export interface SwimMeet extends AppwriteDocument {
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  city: string;
+  address?: string;
+  creatorId: string;
+  participants: string[];
+  maxParticipants?: number;
+  status: 'upcoming' | 'completed' | 'cancelled';
 }

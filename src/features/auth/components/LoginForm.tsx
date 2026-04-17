@@ -114,7 +114,7 @@ export const LoginForm: React.FC = () => {
                             />
                         </div>
 
-                        {/* 🌟 COREOGRAFIA BOTTONE LOGIN */}
+                        {/* LOGIN */}
                         <button
                             type="submit"
                             disabled={isLoading}
@@ -169,7 +169,7 @@ export const LoginForm: React.FC = () => {
                             />
                         </div>
 
-                        {/* 🌟 COREOGRAFIA BOTTONE RECOVERY */}
+                        {/* RECOVERY */}
                         <button
                             type="submit"
                             disabled={isRecovering}

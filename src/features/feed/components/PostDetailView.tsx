@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import type { EnrichedPost } from '@/types/types';
+import React, { useState, useEffect, useRef } from 'react';
+import type { EnrichedPost, Media } from '@/types/types';
 import { PostCard } from './PostCard';
 import { Comment, EnrichedComment } from './Comment';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,6 +21,28 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({ post, onBack, on
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
+    // STATI E REF PER VIDEO-ANALISI
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [selectedTimestamp, setSelectedTimestamp] = useState<number | null>(null);
+
+    let extractedMedia: Media[] = [];
+    const mediaMatch = post.content.match(/\[MEDIA\](.*?)\[\/MEDIA\]/);
+    if (mediaMatch) {
+        try { extractedMedia = JSON.parse(mediaMatch[1]); } catch(e) {}
+    }
+    const isVideoAnalysis = post.postType === 'video-analysis';
+    const videoMedia = extractedMedia.find(m => m.type === 'video') || extractedMedia[0];
+
+    const postForCard = (isVideoAnalysis && videoMedia) 
+        ? { ...post, content: post.content.replace(/\[MEDIA\](.*?)\[\/MEDIA\]/, '') } 
+        : post;
+
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
     const loadComments = async () => {
         setIsLoading(true);
         try {
@@ -38,12 +60,18 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({ post, onBack, on
     }, [post.$id]);
 
     const handlePublishComment = async () => {
-        if (!user || !newCommentText.trim() || isSubmitting) return;
+        if (!user || (!newCommentText.trim() && selectedTimestamp === null) || isSubmitting) return;
 
         setIsSubmitting(true);
         try {
-            await databaseService.createComment(post.$id, user.$id, newCommentText.trim());
+            const finalContent = selectedTimestamp !== null 
+                ? `[TIME:${selectedTimestamp.toFixed(2)}] ${newCommentText.trim()}`
+                : newCommentText.trim();
+
+            await databaseService.createComment(post.$id, user.$id, finalContent);
+            
             setNewCommentText('');
+            setSelectedTimestamp(null);
             showToast("Commento pubblicato!", "success");
             await loadComments();
         } catch (error) {
@@ -70,7 +98,24 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({ post, onBack, on
                 </button>
             </div>
 
-            <PostCard post={post} /> 
+            <PostCard post={postForCard} /> 
+
+            {/* PLAYER VIDEO-ANALISI */}
+            {isVideoAnalysis && videoMedia && (
+                <div className="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 overflow-hidden mt-4 mb-6 relative animate-in slide-in-from-top-4">
+                    <div className="absolute top-4 left-4 z-10 bg-purple-600/90 backdrop-blur-md text-white px-3 py-1.5 rounded-lg font-extrabold text-xs flex items-center gap-2 shadow-lg border border-purple-400">
+                        <Icon type="camera" className="w-4 h-4 animate-pulse" />
+                        MODALITÀ ANALISI TECNICA
+                    </div>
+                    <video
+                        ref={videoRef}
+                        src={videoMedia.url}
+                        controls
+                        playsInline
+                        className="w-full max-h-[60vh] object-contain"
+                    />
+                </div>
+            )}
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-4">
                 <div className="p-5 sm:p-6 border-b border-slate-100 bg-slate-50/50">
@@ -81,11 +126,37 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({ post, onBack, on
                 
                 {user ? (
                     <div className="p-5 sm:p-6 border-b border-slate-100 bg-white">
+                        
+                        {/* CATTURA FRAME */}
+                        {isVideoAnalysis && (
+                            <div className="flex flex-wrap items-center gap-2 mb-3 ml-12 sm:ml-16">
+                                <button
+                                    onClick={() => {
+                                        if (videoRef.current) {
+                                            videoRef.current.pause();
+                                            setSelectedTimestamp(videoRef.current.currentTime);
+                                        }
+                                    }}
+                                    className="bg-purple-50 text-purple-700 hover:bg-purple-100 px-3 py-1.5 rounded-lg text-xs font-extrabold transition-colors flex items-center gap-1.5 border border-purple-200 outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                                >
+                                    <Icon type="camera" className="w-4 h-4" /> Cattura Frame dal Video
+                                </button>
+                                {selectedTimestamp !== null && (
+                                    <div className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 shadow-sm animate-in zoom-in duration-200">
+                                        ⏱ {formatTime(selectedTimestamp)}
+                                        <button onClick={() => setSelectedTimestamp(null)} className="hover:text-purple-200 outline-none ml-1">
+                                            <Icon type="x" className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         <div className="flex items-start gap-3 sm:gap-4">
                             <img src={currentUserAvatar} alt="Il tuo avatar" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border border-slate-200 shadow-sm flex-shrink-0" />
                             <div className="flex-1">
                                 <textarea 
-                                    placeholder="Scrivi un commento costruttivo..."
+                                    placeholder={isVideoAnalysis ? "Aggiungi un'osservazione tecnica..." : "Scrivi un commento costruttivo..."}
                                     value={newCommentText}
                                     onChange={(e) => setNewCommentText(e.target.value)}
                                     disabled={isSubmitting}
@@ -95,7 +166,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({ post, onBack, on
                                 <div className="flex justify-end mt-3">
                                     <button 
                                         onClick={handlePublishComment}
-                                        disabled={isSubmitting || !newCommentText.trim()}
+                                        disabled={isSubmitting || (!newCommentText.trim() && selectedTimestamp === null)}
                                         className="bg-blue-600 text-white font-bold px-6 py-2 rounded-full hover:bg-blue-700 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                     >
                                         {isSubmitting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Pubblica'}
@@ -113,7 +184,39 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({ post, onBack, on
                         <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 border-t-blue-600"></div></div>
                     ) : comments.length > 0 ? (
                         <div className="space-y-6">
-                            {comments.map(comment => <Comment key={comment.$id} comment={comment} onSelectProfile={onSelectProfile} />)}
+                            {comments.map(comment => {
+                                const timeMatch = comment.content.match(/^\[TIME:([\d.]+)\]\s*([\s\S]*)/);
+                                let displayComment = comment;
+                                let timeVal: number | null = null;
+
+                                if (timeMatch) {
+                                    timeVal = parseFloat(timeMatch[1]);
+                                    displayComment = { ...comment, content: timeMatch[2] };
+                                }
+
+                                return (
+                                    <div key={comment.$id} className="relative group pt-1">
+                                        {timeVal !== null && (
+                                            <div className="absolute top-0 right-0 sm:top-2 sm:right-2 z-10">
+                                                <button
+                                                    onClick={() => {
+                                                        if(videoRef.current) {
+                                                            videoRef.current.currentTime = timeVal!;
+                                                            videoRef.current.play();
+                                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                        }
+                                                    }}
+                                                    className="bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-600 hover:text-white px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-extrabold transition-all shadow-sm flex items-center gap-1.5 outline-none focus-visible:ring-2 focus-visible:ring-purple-500 group-hover:scale-105"
+                                                >
+                                                    <Icon type="play" className="w-3 h-3 sm:w-4 sm:h-4" /> 
+                                                    Vai al sec. {formatTime(timeVal)}
+                                                </button>
+                                            </div>
+                                        )}
+                                        <Comment comment={displayComment} onSelectProfile={onSelectProfile} />
+                                    </div>
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="text-center py-10"><p className="text-slate-500 text-lg">Sii il primo a commentare! 💬</p></div>

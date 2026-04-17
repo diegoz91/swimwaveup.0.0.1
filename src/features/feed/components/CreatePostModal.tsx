@@ -10,7 +10,7 @@ interface CreatePostModalProps {
     onClose: () => void;
     onCreatePost: (content: string, media: Media[], category: string) => Promise<void> | void;
     user: UserProfile | StructureProfile;
-    initialMediaType?: 'photo' | null;
+    initialMediaType?: 'photo' | 'video' | 'video-analysis' | null;
 }
 
 const CATEGORIES = [
@@ -26,7 +26,8 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
 }) => {
     const [content, setContent] = useState('');
     const [mediaFiles, setMediaFiles] = useState<{ file: File, preview: string, alt: string }[]>([]);
-    const [mediaType, setMediaType] = useState<'photo' | null>(initialMediaType || null);
+    // 💡 FIX VERCEL: Esteso il tipo per lo stato
+    const [mediaType, setMediaType] = useState<'photo' | 'video' | 'video-analysis' | null>(initialMediaType || null);
     const [selectedCategory, setSelectedCategory] = useState('generale');
     const [uploading, setUploading] = useState(false);
     

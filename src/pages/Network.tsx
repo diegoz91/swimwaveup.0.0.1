@@ -263,7 +263,7 @@ const Network: React.FC = () => {
                             {meets.map(meet => {
                                 const isCreator = meet.creatorId === currentUser.$id;
                                 const isParticipating = (meet.participants || []).includes(currentUser.$id);
-                                const isFull = meet.maxParticipants && (meet.participants || []).length >= meet.maxParticipants;
+                                const isFull = Boolean(meet.maxParticipants && (meet.participants || []).length >= meet.maxParticipants);
 
                                 return (
                                     <div key={meet.$id} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow">

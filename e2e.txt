@@ -1,0 +1,13 @@
+✓ e2e accesso con email e password (desktop, 1487 ms)
+✓ e2e accesso con verifica in due passaggi (mobile, 1908 ms)
+✓ e2e registrazione: i campi obbligatori sono segnalati (mobile, 973 ms)
+✓ e2e pubblicare un post (desktop, 1171 ms)
+✓ e2e commentare un post (mobile, 1099 ms)
+✓ e2e inviare un messaggio (desktop, 1023 ms)
+✓ e2e candidarsi a un’offerta (mobile, 1365 ms)
+✓ e2e creare un avviso di lavoro (desktop, 1493 ms)
+✓ e2e offerta pubblica senza account porta alla registrazione (mobile, 669 ms)
+✓ e2e le pagine private chiedono l’accesso (desktop, 914 ms)
+✓ prestazioni landing (mobile, 4G, CPU ×4): LCP 1318 ms (budget 2500), CLS 0 (budget 0.1), trasferiti 164 KB
+
+Tutti i percorsi end-to-end sono riusciti.
